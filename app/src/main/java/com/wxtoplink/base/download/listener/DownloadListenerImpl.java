@@ -24,8 +24,15 @@ public class DownloadListenerImpl implements DownloadListener {
     private boolean isDownloading = false;
 
     @Override
-    public void onStartDownLoad(DownloadTask downloadTask) {
+    public void onPrepareDownload(DownloadTask downloadTask) {
         isDownloading = true ;
+        if(downloadListener != null){
+            downloadListener.onPrepareDownload(downloadTask);
+        }
+    }
+
+    @Override
+    public void onStartDownLoad(DownloadTask downloadTask) {
         if(downloadListener != null){
             downloadListener.onStartDownLoad(downloadTask);
         }
@@ -48,10 +55,24 @@ public class DownloadListenerImpl implements DownloadListener {
     }
 
     @Override
-    public void onError(String errorMessage) {
+    public void onRemoveQueue(int queueSize) {
+        if(downloadListener != null){
+            downloadListener.onRemoveQueue(queueSize);
+        }
+    }
+
+    @Override
+    public void onAllComplete() {
+        if(downloadListener != null){
+            downloadListener.onAllComplete();
+        }
+    }
+
+    @Override
+    public void onError(Throwable throwable) {
         isDownloading = false ;
         if(downloadListener != null){
-            downloadListener.onError(errorMessage);
+            downloadListener.onError(throwable);
         }
         this.downloadListener = null ;
     }
