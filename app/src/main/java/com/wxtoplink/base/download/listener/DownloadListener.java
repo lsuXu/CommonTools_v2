@@ -13,7 +13,7 @@ public interface DownloadListener {
     void onPrepareDownload(DownloadTask downloadTask);
 
     //开始下载
-    void onStartDownLoad(DownloadTask downloadTask);
+    void onStartDownLoad();
 
     //进度
     void onProgress(long receiverSize, long totalSize, int progress);

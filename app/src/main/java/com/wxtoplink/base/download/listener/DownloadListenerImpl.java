@@ -32,9 +32,9 @@ public class DownloadListenerImpl implements DownloadListener {
     }
 
     @Override
-    public void onStartDownLoad(DownloadTask downloadTask) {
+    public void onStartDownLoad() {
         if(downloadListener != null){
-            downloadListener.onStartDownLoad(downloadTask);
+            downloadListener.onStartDownLoad();
         }
     }
 
@@ -51,7 +51,6 @@ public class DownloadListenerImpl implements DownloadListener {
         if(downloadListener!= null){
             downloadListener.onFinishDownload();
         }
-        this.downloadListener = null ;
     }
 
     @Override
@@ -65,6 +64,7 @@ public class DownloadListenerImpl implements DownloadListener {
     public void onAllComplete() {
         if(downloadListener != null){
             downloadListener.onAllComplete();
+            downloadListener = null ;
         }
     }
 
@@ -74,7 +74,6 @@ public class DownloadListenerImpl implements DownloadListener {
         if(downloadListener != null){
             downloadListener.onError(throwable);
         }
-        this.downloadListener = null ;
     }
 
     public boolean isDownloading(){

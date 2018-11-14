@@ -110,13 +110,6 @@ public class DownloadManager {
         if(downloadQueue.contains(downloadTask)){
             Log.i(TAG,"删除下载任务：" + downloadTask);
             downloadQueue.remove(downloadTask);
-            //移除
-            if(downloadTask.getDownloadListener() != null){
-                downloadTask.getDownloadListener().onRemoveQueue(downloadQueue.size());
-            }
-            if(!hasNext() && downloadTask.getDownloadListener() != null){
-                downloadTask.getDownloadListener().onAllComplete();
-            }
             return true ;
         }
         return false;
@@ -129,9 +122,9 @@ public class DownloadManager {
     //实际的下载方式
     private void download(final DownloadTask downloadObject){
         Log.i(TAG,"准备下载：filePath =" + downloadObject.getFile_path());
-        if(downloadObject.getDownloadListener() != null){
-            DownloadListenerImpl.getInstance().setDownloadListener(downloadObject.getDownloadListener());
-        }
+        //设置下载监听器
+        DownloadListenerImpl.getInstance().setDownloadListener(downloadObject.getDownloadListener());
+
         //准备下载文件
         DownloadListenerImpl.getInstance().onPrepareDownload(downloadObject);
         RetrofitHelper.getInstance()
@@ -151,13 +144,13 @@ public class DownloadManager {
                     public void accept(InputStream inputStream) throws Exception {
                         Log.i(TAG,"开始下载文件");
                         //开始下载文件
-                        DownloadListenerImpl.getInstance().onStartDownLoad(downloadObject);
+                        DownloadListenerImpl.getInstance().onStartDownLoad();
                         writeFile(inputStream, downloadObject.getFile_path());
 
                         Log.i(TAG,"下载完成");
                         //下载完成，执行下载完成回调
                         DownloadListenerImpl.getInstance().onFinishDownload();
-                        //移除下载任务，移除后DownloadListenerImpl.getInstance()中的监听对象会被置空
+                        //移除下载任务
                         removeDownloadTask(downloadObject);
                         //从队列移除后的回调
                         DownloadListenerImpl.getInstance().onRemoveQueue(downloadQueue.size());
