@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 
 /**
  * Created by 12852 on 2018/8/9.
@@ -99,6 +100,12 @@ public class FileUtils {
         return true;
     }
 
+    public static void zip(String folder,String dest) throws IOException{
+        ZipUtils.zip(folder,dest);
+    }
 
+    public static void unZip(String archive, String decompressDir) throws IOException{
+        ZipUtils.unZip(archive,decompressDir);
+    }
 
 }
