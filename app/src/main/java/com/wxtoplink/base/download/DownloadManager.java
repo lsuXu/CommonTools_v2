@@ -4,6 +4,7 @@ import android.util.Log;
 
 import com.wxtoplink.base.download.listener.DownloadListener;
 import com.wxtoplink.base.download.listener.DownloadListenerImpl;
+import com.wxtoplink.base.tools.EncryptionCheckUtil;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -97,6 +98,9 @@ public class DownloadManager {
 
     //是否已经存在这个任务
     private boolean isContains(DownloadTask downloadTask){
+        if(downloadQueue.contains(downloadTask)){
+            return true ;
+        }
         for(DownloadTask task:downloadQueue){
             if(task.getFile_path().equals(downloadTask.getFile_path())){
                 return true ;
@@ -149,7 +153,15 @@ public class DownloadManager {
 
                         Log.i(TAG,"下载完成");
                         //下载完成，执行下载完成回调
-                        DownloadListenerImpl.getInstance().onFinishDownload();
+                        if(downloadObject.getMd5() != null && downloadObject.getMd5().length() >0){
+                            if(checkMd5(downloadObject.getFile_path(),downloadObject.getMd5())){
+                                DownloadListenerImpl.getInstance().onFinishDownload();
+                            }else{
+                                DownloadListenerImpl.getInstance().onError(new Throwable("MD5 is mismatches"));
+                            }
+                        }else {
+                            DownloadListenerImpl.getInstance().onFinishDownload();
+                        }
                         //移除下载任务
                         removeDownloadTask(downloadObject);
                         //从队列移除后的回调
@@ -212,4 +224,14 @@ public class DownloadManager {
         }
 
     }
+
+    //校验md5是否相同
+    private boolean checkMd5(String filePath ,String md5){
+        String fileMd5 = EncryptionCheckUtil.md5sum(filePath);
+        if(fileMd5 != null){
+            return fileMd5.toUpperCase().equals(md5.toUpperCase());
+        }
+        return false ;
+    }
+
 }

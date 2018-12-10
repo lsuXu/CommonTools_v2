@@ -15,16 +15,16 @@ public class DownloadTask {
     //文件的保存路径，全路径
     private String file_path ;
     //hash值,选填
-    private String hash ;
+    private String md5 ;
     //下载文件的监听器
     private DownloadListener downloadListener ;
 
 
-    public DownloadTask(String download_url, String file_name, String file_path, String hash, DownloadListener downloadListener) {
+    public DownloadTask(String download_url, String file_name, String file_path, String md5, DownloadListener downloadListener) {
         this.download_url = download_url;
         this.file_name = file_name;
         this.file_path = file_path;
-        this.hash = hash;
+        this.md5 = md5;
         this.downloadListener = downloadListener;
     }
 
@@ -60,12 +60,12 @@ public class DownloadTask {
         this.downloadListener = downloadListener;
     }
 
-    public String getHash() {
-        return hash;
+    public String getMd5() {
+        return md5;
     }
 
-    public void setHash(String hash) {
-        this.hash = hash;
+    public void setMd5(String md5) {
+        this.md5 = md5;
     }
 
 }
