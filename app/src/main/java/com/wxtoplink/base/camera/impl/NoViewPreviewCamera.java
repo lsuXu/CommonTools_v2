@@ -23,13 +23,13 @@ import java.util.List;
  * Created by 12852 on 2018/8/29.
  */
 
-public class CameraPreviewDataImpl extends CameraTemplateImpl implements CameraPreviewData {
+public class NoViewPreviewCamera extends CameraTemplateImpl implements CameraPreviewData {
 
     private ImageReader imageReader ;
 
     private PreviewDataCallBack previewDataCallBack ;
 
-    public CameraPreviewDataImpl(Context context) {
+    public NoViewPreviewCamera(Context context) {
         super(context);
         format = ImageFormat.YUV_420_888;
     }

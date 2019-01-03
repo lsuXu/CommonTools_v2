@@ -69,6 +69,13 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
     @Override
     public synchronized void startPreview() {
         Log.i(TAG, "camera startPreview:" + isPreview);
+        if(cameraId == null){
+            try {
+                cameraId = CameraUtils.getDefaultCameraId(context);
+            } catch (CameraAccessException e) {
+                e.printStackTrace();
+            }
+        }
         if (!isPreview) {
             isPreview = true;
             startBackgroundThread();

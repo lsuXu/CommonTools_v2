@@ -1,163 +1,96 @@
 package com.wxtoplink.base.camera;
 
-import android.Manifest;
 import android.content.Context;
-import android.support.annotation.RequiresPermission;
-import android.util.Size;
-import android.view.TextureView;
 
-import com.wxtoplink.base.camera.impl.CameraPreviewDataImpl;
+import com.wxtoplink.base.camera.impl.NoViewPreviewCamera;
 import com.wxtoplink.base.camera.impl.CameraTakePhotoImpl;
-import com.wxtoplink.base.camera.interfaces.CameraPreviewData;
-import com.wxtoplink.base.camera.interfaces.CameraTakePhoto;
+import com.wxtoplink.base.camera.impl.ViewPreviewCamera;
 import com.wxtoplink.base.camera.interfaces.CameraTemplate;
-import com.wxtoplink.base.camera.interfaces.PreviewDataCallBack;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.HashMap;
+import java.util.Map;
 
 
 /**
+ * 相机工具类的入口，同步不同功能相机的使用，以及正确的资源释放
  * Created by 12852 on 2018/8/29.
  */
 
-public class CameraComponent implements CameraTemplate,CameraTakePhoto,CameraPreviewData {
+public class CameraComponent {
 
-    public static final int CAMERA_NORMAL = 0x01 ;
-    public static final int CAMERA_PREVIEW = 0x02 ;
 
-    private boolean isInit = false ;
+    private Map<String,CameraTemplate> cameraTemplateMap ;
 
-    private CameraTakePhotoImpl cameraTakePhoto ;
+    private CameraComponent(){
+        cameraTemplateMap = new HashMap<>();
+    }
 
-    private CameraPreviewDataImpl cameraPreviewData ;
-
-    private Context context ;
 
     public static CameraComponent getInstance(){
         return CameraHolder.instance ;
     }
 
     //设置相机用途，使用相机组件，需要第一个被调用来初始化相机
-    public void setCameraType(int cameraType,Context context){
-        isInit = true ;
-        if(cameraType == CameraComponent.CAMERA_NORMAL){
-            if(cameraPreviewData != null){
-                cameraPreviewData.stopPreview();
-                cameraPreviewData = null ;
-            }
-            if(cameraTakePhoto == null) {
-                cameraTakePhoto = new CameraTakePhotoImpl(context);
-            }
-        }else if(cameraType == CameraComponent.CAMERA_PREVIEW){
-            if(cameraTakePhoto != null){
-                cameraTakePhoto.stopPreview();
-                cameraTakePhoto = null ;
-            }
-            if(cameraPreviewData == null){
-                cameraPreviewData = new CameraPreviewDataImpl(context);
-            }
+    public synchronized CameraTemplate getCamera(CameraType cameraType, Context context){
+        safeRelease();
+        CameraTemplate cameraTemplate = null;
+        if(cameraTemplateMap.containsKey(cameraType.getTypeName())){
+            cameraTemplate =  cameraTemplateMap.get(cameraType.getTypeName());
         }else{
-            throw new IllegalArgumentException("This cameraState " + cameraType + " is not support");
+            try {
+                Constructor constructor = cameraType.getTargetClass().getConstructor(Context.class);
+                if(constructor != null) {
+                    cameraTemplate = (CameraTemplate) constructor.newInstance(context);
+                    if (cameraTemplate != null) {
+                        cameraTemplateMap.put(cameraType.getTypeName(), cameraTemplate);
+                    }
+                }
+            }catch (NoSuchMethodException e) {
+                e.printStackTrace();
+            } catch (InstantiationException e) {
+                e.printStackTrace();
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
+            }
+        }
+        return cameraTemplate;
+    }
+
+    //释放相机资源
+    public synchronized void safeRelease(){
+        for(CameraTemplate cameraTemplate : cameraTemplateMap.values()){
+            cameraTemplate.stopPreview();
         }
     }
 
-    //开始预览
-    @Override
-    @RequiresPermission(android.Manifest.permission.CAMERA)
-    public synchronized void startPreview() {
-        safeCheck();
-        if(cameraTakePhoto != null) {
-            cameraTakePhoto.startPreview();
-        }
-        if(cameraPreviewData != null){
-            cameraPreviewData.startPreview();
-        }
-    }
-
-    //停止预览
-    @Override
-    public synchronized void stopPreview() {
-        safeCheck();
-        if(cameraTakePhoto != null) {
-            cameraTakePhoto.stopPreview();
-            cameraTakePhoto = null ;
-        }
-        if(cameraPreviewData != null){
-            cameraPreviewData.stopPreview();
-            cameraPreviewData = null ;
-        }
-        isInit = false;
-    }
-
-    //摄照相机ID
-    @Override
-    public void setCameraId(String cameraId) {
-        safeCheck();
-        if(cameraTakePhoto != null) {
-            cameraTakePhoto.setCameraId(cameraId);
-        }
-        if(cameraPreviewData != null){
-            cameraPreviewData.setCameraId(cameraId);
-        }
-    }
-
-    //设置图片格式
-    @Override
-    public void setImageFormat(int imageFormat) {
-        safeCheck();
-        if(cameraTakePhoto != null){
-            cameraTakePhoto.setImageFormat(imageFormat);
-        }
-        if(cameraPreviewData != null){
-            cameraPreviewData.setImageFormat(imageFormat);
-        }
-    }
-
-    //设置数据最大尺寸
-    @Override
-    public void setMaxSize(Size maxSize) {
-        safeCheck();
-        if(cameraTakePhoto != null){
-            cameraTakePhoto.setMaxSize(maxSize);
-        }
-        if(cameraPreviewData != null){
-            cameraPreviewData.setMaxSize(maxSize);
-        }
-    }
-
-    //设置预览界面
-    @Override
-    public void setSurfaceView(TextureView view) {
-        safeCheck();
-        if(cameraTakePhoto != null) {
-            cameraTakePhoto.setSurfaceView(view);
-        }
-    }
-
-    //拍照
-    @Override
-    @RequiresPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-    public void takePhoto(String filePath) {
-        safeCheck();
-        if(cameraTakePhoto != null) {
-            cameraTakePhoto.takePhoto(filePath);
-        }
-    }
-
-    //设置无界面预览数据回调
-    @Override
-    public void setPreviewDataCallBack(PreviewDataCallBack previewDataCallBack) {
-        safeCheck();
-        if(cameraPreviewData != null){
-            cameraPreviewData.setPreviewDataCallBack(previewDataCallBack);
-        }
-    }
-
-    private void safeCheck(){
-        if(!isInit){
-            throw new SecurityException("You need to call cameraType() to select the camera first");
-        }
-    }
 
     private static final class CameraHolder{
         private static final CameraComponent instance = new CameraComponent();
+    }
+
+    public enum CameraType{
+
+        NORMAL(CameraTakePhotoImpl.class,"normal"),//预览并且拍照
+        VIEW_PREVIEW_DATA(ViewPreviewCamera.class,"viewPreviewData"),//界面预览，实时获取数据，提供最大分辨率拍照
+        NO_VIEW_PREVIEW_DATA(NoViewPreviewCamera.class,"noViewPreviewData");//无界面预览，实时获取数据
+
+        private Class targetClass ;//类型对应的实现类
+        private String typeName ;
+
+        public Class getTargetClass(){
+            return targetClass ;
+        }
+        private CameraType(Class c,String typeName){
+            this.targetClass = c ;
+            this.typeName = typeName ;
+        }
+
+        public String getTypeName() {
+            return typeName;
+        }
     }
 }

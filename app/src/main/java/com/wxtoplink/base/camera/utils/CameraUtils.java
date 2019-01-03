@@ -31,12 +31,22 @@ public class CameraUtils {
 
     private static final String TAG = CameraUtils.class.getSimpleName() ;
 
-    public static Size getFitPreviewSize(@NonNull Context context,@NonNull String cameraId,@NonNull int format,@Nullable Size maxSize){
-        CameraManager cameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
+    public static Size getFitPreviewSize(@NonNull Context context,@Nullable String cameraId,@NonNull int format,@Nullable Size maxSize){
+        CameraManager cameraManager ;
+
         try {
+            if(cameraId == null){
+                cameraId = getDefaultCameraId(context);
+            }
+            cameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
             CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
             StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-            return CameraUtils.getFitPreviewSize(Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)),null);
+            Size[] supportSize = map.getOutputSizes(format);
+            if(supportSize == null){
+                throw new IllegalArgumentException(String.format(
+                        "format 0x%x was not defined in either ImageFormat or PixelFormat", format));
+            }
+            return CameraUtils.getFitPreviewSize(Arrays.asList(supportSize),maxSize);
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
