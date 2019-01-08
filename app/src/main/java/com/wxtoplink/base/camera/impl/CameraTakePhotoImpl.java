@@ -1,5 +1,6 @@
 package com.wxtoplink.base.camera.impl;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
@@ -11,12 +12,15 @@ import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
+import android.support.annotation.NonNull;
 import android.util.Size;
 import android.view.Surface;
 import android.view.TextureView;
 
 import com.wxtoplink.base.camera.interfaces.CameraTakePhoto;
+import com.wxtoplink.base.camera.interfaces.CapturePhotoCallBack;
 import com.wxtoplink.base.camera.utils.CameraUtils;
+import com.wxtoplink.base.tools.ByteDataFormat;
 
 import java.util.Arrays;
 import java.util.List;
@@ -33,7 +37,7 @@ public class CameraTakePhotoImpl extends CameraTemplateImpl implements CameraTak
 
     public CameraTakePhotoImpl(Context context) {
         super(context);
-        format = ImageFormat.JPEG ;
+        format = ImageFormat.JPEG ;//无界面预览模式，故默认使用JPEG格式进行拍照，还支持YUV_420_888数据格式
     }
 
     @Override
@@ -98,18 +102,18 @@ public class CameraTakePhotoImpl extends CameraTemplateImpl implements CameraTak
 
     //拍照保存，需传入保存路径
     public void takePhoto(final String path){
+        initTakePhotoImageReader(path);
+        capturePhoto();
+    }
 
-        imageReader.setOnImageAvailableListener(new ImageReader.OnImageAvailableListener() {
-            @Override
-            public void onImageAvailable(ImageReader reader) {
+    @Override
+    public void takePhoto(CapturePhotoCallBack capturePhotoCallBack) {
+        initTakePhotoImageReader(capturePhotoCallBack);
+        capturePhoto();
+    }
 
-                Image image = imageReader.acquireNextImage();
-                if(image != null){
-                    CameraUtils.saveImage(image,path);
-                }
-                image.close();
-            }
-        },null);
+    //建立拍照请求
+    public void capturePhoto(){
         //执行拍照
         synchronized (CameraTakePhotoImpl.this){
             if(captureRequestBuilder != null && isPreview()){
@@ -126,13 +130,52 @@ public class CameraTakePhotoImpl extends CameraTemplateImpl implements CameraTak
                 }
             }
         }
+    }
 
+
+    //初始化拍照ImageReader
+    private void initTakePhotoImageReader(final String path){
+
+        imageReader.setOnImageAvailableListener(new ImageReader.OnImageAvailableListener() {
+            @Override
+            public void onImageAvailable(ImageReader reader) {
+                Image image = reader.acquireLatestImage();
+                if(image != null){
+                    if(image.getFormat() == ImageFormat.JPEG) {
+                        CameraUtils.saveImage(image, path);
+                    }else if(image.getFormat() == ImageFormat.YUV_420_888){
+                        byte [] nv21Byte = ByteDataFormat.formatYUV420_888ToNV21(image);
+                        byte [] jpegByte = ByteDataFormat.NV21_2_JPEG(nv21Byte,image.getWidth(),image.getHeight());
+                        CameraUtils.saveImage(jpegByte,path);
+                    }else{//直接保存照片的拍照方式仅支持JPEG格式以及YUV_420_888格式，其余格式，调用initTakePhotoImageReader(CapturePhotoCallBack)自行实现
+                        image.close();
+                        throw new IllegalArgumentException("The takePhoto('String') method supports olay JPEG and YUV_420_888 format " +
+                                ",recommended to call takePhoto(CapturePhotoCallBack)");
+                    }
+                }
+            }
+        },null);
+    }
+
+    //初始化ImagerReader
+    private void initTakePhotoImageReader(@NonNull final CapturePhotoCallBack capturePhotoCallBack){
+        imageReader.setOnImageAvailableListener(new ImageReader.OnImageAvailableListener() {
+            @Override
+            public void onImageAvailable(ImageReader reader) {
+                Image image = reader.acquireLatestImage();
+                if(image != null){
+                    capturePhotoCallBack.captureData(image);
+                    image.close();
+                }
+            }
+        },null);
     }
 
 
     //textureView的状态回调处理
     private final TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener(){
 
+        @SuppressLint("MissingPermission")
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
             startPreview();

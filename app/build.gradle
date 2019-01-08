@@ -8,7 +8,7 @@ android {
         minSdkVersion 21
         targetSdkVersion 26
         versionCode 1
-        versionName "1.1.3"
+        versionName "1.1.4"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
@@ -38,15 +38,15 @@ dependencies {
 task makeJar(type:Copy){
 
     //删除已存在的
-    delete 'libs/base_tools_v2.jar'
+    delete 'build/base_tools_v2_1_1_4.jar'
     //设置拷贝的文件
     from('build/intermediates/bundles/release/')
     //打进jar包后的文件目录
-    into('libs/')
+    into('build/')
     //将classes.jar放到build/libs目录下
     //include,exclude参数设置过滤
     //现在只需要classes.jar这个文件
     include('classes.jar')
     //重命名
-    rename('classes.jar','base_tools_v2_1_1_3.jar')
+    rename('classes.jar','base_tools_v2_1_1_4.jar')
 }

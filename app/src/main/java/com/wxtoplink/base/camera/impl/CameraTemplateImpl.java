@@ -20,9 +20,12 @@ import android.util.Log;
 import android.util.Size;
 import android.view.Surface;
 
+import com.wxtoplink.base.camera.interfaces.CameraListener;
+import com.wxtoplink.base.camera.interfaces.CameraStatusListener;
 import com.wxtoplink.base.camera.interfaces.CameraTemplate;
 import com.wxtoplink.base.camera.utils.CameraUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -31,7 +34,7 @@ import java.util.List;
  * Created by 12852 on 2018/8/28.
  */
 
-public abstract class CameraTemplateImpl implements CameraTemplate {
+public abstract class CameraTemplateImpl implements CameraTemplate,CameraListener {
 
     private static final String TAG = CameraTemplateImpl.class.getSimpleName();
 
@@ -65,10 +68,15 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
 
     private Handler mBackgroundHandler;
 
+    private List<CameraStatusListener> cameraStatusListeners = null;
+
     @RequiresPermission(android.Manifest.permission.CAMERA)
     @Override
     public synchronized void startPreview() {
         Log.i(TAG, "camera startPreview:" + isPreview);
+        if(cameraStatusListeners == null){
+            cameraStatusListeners = new ArrayList<>();
+        }
         if(cameraId == null){
             try {
                 cameraId = CameraUtils.getDefaultCameraId(context);
@@ -143,15 +151,13 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
     //创建相机预览会话
     private void createCameraPreviewSession() {
         if(isPreview) {
-            Log.i(TAG, " createCameraPreviewSession 获取CameraDevice.class锁");
             synchronized (CameraDevice.class) {
-                Log.i(TAG, "createCameraPreviewSession 获取ImageReader.class锁");
                 synchronized (ImageReader.class) {
                     try {
                         //创建新的捕获请求，高帧率优先
                         captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
 
-                        //FIXME 无界面预览，在这里处理
+                        //无界面预览，在这里处理，不加入预览界面的surface,则不会输出预览界面
                         for(Surface surface: getSurfaceList()){
                             captureRequestBuilder.addTarget(surface);
                         }
@@ -194,9 +200,10 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
         }
     }
 
-    //获取显示图像数据的预览目标surface列表
+    //预设将会用到的所有获取显示图像数据的预览目标surface列表
     public abstract List<Surface> getTotalSurfaceList();
 
+    //初始状态的surface列表
     public abstract List<Surface> getSurfaceList();
 
         /*----相机的回调处理----*/
@@ -207,6 +214,9 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
         public void onOpened(@NonNull CameraDevice camera) {
             //相机打开成功
             cameraDevice = camera ;
+            for(CameraStatusListener cameraStatusListener :cameraStatusListeners){//状态回调
+                cameraStatusListener.onOpened();
+            }
             //创建相机预览会话
             createCameraPreviewSession();
             Log.i(TAG,"camera opened");
@@ -222,11 +232,11 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
         public void onError(@NonNull CameraDevice camera, int error) {
             camera.close();
             cameraDevice = null ;
-            if(error == 1){
-                Log.e(TAG,"相机无法打开，请尝试重新启动相机。。。");
-                stopPreview();
+            for (CameraStatusListener cameraStatusListener: cameraStatusListeners){
+                cameraStatusListener.onOpenError();
             }
-            Log.e(TAG,"camera error:error state =" + error);
+            stopPreview();
+            Log.e(TAG,"open camera error:error state =" + error);
         }
     };
 
@@ -237,14 +247,14 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
             //若相机失去连接或以关闭
             if(cameraDevice == null)
                 return;
+            for (CameraStatusListener cameraStatusListener: cameraStatusListeners){//状态回调
+                cameraStatusListener.onConfigured();
+            }
             //创建成功的CameraCaptureSession
             cameraCaptureSession = session ;
 
-            Log.i(TAG,"captureStateCallback onConfigured 获取 CameraCaptureSession.class 锁");
             synchronized (cameraCaptureSession) {
-                Log.i(TAG,"captureStateCallback onConfigured 获取 CaptureRequest.Builder.class 锁");
                 synchronized (CaptureRequest.Builder.class) {
-                    Log.i(TAG,"captureStateCallback onConfigured 得到 CaptureRequest.Builder.class 锁");
                     //设置以最快速度进行对焦
                     captureRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
                     //设置预览视图的旋转方向
@@ -267,21 +277,80 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
         public void onConfigureFailed(@NonNull CameraCaptureSession session) {
             //相机配置会话失败
             session.close();
+            for (CameraStatusListener cameraStatusListener: cameraStatusListeners){//状态回调
+                cameraStatusListener.onConfigureFailed();
+            }
             Log.e(TAG,"camera ConfigureFailed error:error state");
         }
     };
 
     protected final CameraCaptureSession.CaptureCallback captureCallback = new CameraCaptureSession.CaptureCallback() {
+
+        @Override
+        public void onCaptureStarted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, long timestamp, long frameNumber) {
+            for (CameraStatusListener cameraStatusListener: cameraStatusListeners){//状态回调
+                cameraStatusListener.onCaptureStarted();
+            }
+            super.onCaptureStarted(session, request, timestamp, frameNumber);
+        }
+
         @Override
         public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
+            for (CameraStatusListener cameraStatusListener: cameraStatusListeners){//状态回调
+                cameraStatusListener.onCaptureCompleted();
+            }
             super.onCaptureCompleted(session, request, result);
         }
 
         @Override
         public void onCaptureFailed(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull CaptureFailure failure) {
             Log.e(TAG,"onCaptureFailed :failure =" + failure);
+            for (CameraStatusListener cameraStatusListener: cameraStatusListeners){//状态回调
+                cameraStatusListener.onCaptureFailed();
+            }
             super.onCaptureFailed(session, request, failure);
         }
+
     };
 
+
+    /** 相机状态回调管理 **/
+
+    @Override
+    public boolean addListener(CameraStatusListener cameraStatusListener) {
+        if(cameraStatusListeners == null){
+            cameraStatusListeners = new ArrayList<>();
+        }
+        if(cameraStatusListeners.contains(cameraStatusListener)){
+            return false ;
+        }else{
+            cameraStatusListeners.add(cameraStatusListener);
+            return true ;
+        }
+    }
+
+    @Override
+    public boolean removeListener(CameraStatusListener cameraStatusListener) {
+        if(cameraStatusListeners == null || cameraStatusListeners.size() == 0){
+            return false ;
+        }else {
+            if(cameraStatusListeners.contains(cameraStatusListener)){
+                cameraStatusListeners.remove(cameraStatusListener);
+                return true ;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public Iterable<CameraStatusListener> getListenerQueue() {
+        return cameraStatusListeners;
+    }
+
+    @Override
+    public void removeAllListener() {
+        if(cameraStatusListeners != null){
+            cameraStatusListeners.clear();
+        }
+    }
 }

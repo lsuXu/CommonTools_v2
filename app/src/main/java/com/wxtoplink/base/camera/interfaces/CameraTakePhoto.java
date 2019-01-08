@@ -11,4 +11,7 @@ public interface CameraTakePhoto {
     void setSurfaceView(TextureView textureView);
 
     void takePhoto(String filePath);
+
+    void takePhoto(CapturePhotoCallBack capturePhotoCallBack);
+
 }

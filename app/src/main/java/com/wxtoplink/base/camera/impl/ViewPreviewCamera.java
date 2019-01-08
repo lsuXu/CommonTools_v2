@@ -11,15 +11,17 @@ import android.media.Image;
 import android.media.ImageReader;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.os.Looper;
+import android.support.annotation.NonNull;
 import android.util.Size;
 import android.view.Surface;
 import android.view.TextureView;
 
 import com.wxtoplink.base.camera.interfaces.CameraPreviewData;
 import com.wxtoplink.base.camera.interfaces.CameraTakePhoto;
+import com.wxtoplink.base.camera.interfaces.CapturePhotoCallBack;
 import com.wxtoplink.base.camera.interfaces.PreviewDataCallBack;
 import com.wxtoplink.base.camera.utils.CameraUtils;
+import com.wxtoplink.base.tools.ByteDataFormat;
 
 import java.util.Arrays;
 import java.util.List;
@@ -40,7 +42,7 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
 
     public ViewPreviewCamera(Context context) {
         super(context);
-        format = ImageFormat.YUV_420_888 ;
+        format = ImageFormat.YUV_420_888 ;//有界面以及预览数据，当前仅支持使用YUV_420_888数据格式
         startHandleThread();
     }
 
@@ -77,8 +79,8 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
         },handler);
 
         //初始化拍照回调的imageReader,使用JPEG格式，最大支持大小
-        Size size = CameraUtils.getFitPreviewSize(context,cameraId,ImageFormat.JPEG,null);
-        imageReaderTakePhoto = ImageReader.newInstance(size.getWidth(),size.getHeight(),ImageFormat.JPEG,1);
+        Size size = CameraUtils.getFitPreviewSize(context,cameraId,format,null);
+        imageReaderTakePhoto = ImageReader.newInstance(size.getWidth(),size.getHeight(),format,1);
     }
 
 
@@ -145,9 +147,18 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
 
     //拍照保存，需传入保存路径
     public void takePhoto(final String path){
-
         initTakePhotoImageReader(path);
+        capturePhoto();
+    }
 
+    @Override
+    public void takePhoto(@NonNull CapturePhotoCallBack capturePhotoCallBack) {
+        initTakePhotoImageReader(capturePhotoCallBack);
+        capturePhoto();
+    }
+
+    //建立拍照请求
+    private void capturePhoto(){
         //执行拍照
         synchronized (ViewPreviewCamera.this){
             if(captureRequestBuilder != null && isPreview()){
@@ -164,13 +175,13 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
                 }
             }
         }
-
     }
 
 
     //textureView的状态回调处理
     private final TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener(){
 
+        @SuppressLint("MissingPermission")
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
             startPreview();
@@ -202,7 +213,31 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
             public void onImageAvailable(ImageReader reader) {
                 Image image = reader.acquireLatestImage();
                 if(image != null){
-                    CameraUtils.saveImage(image,path);
+                    if(image.getFormat() == ImageFormat.JPEG) {
+                        CameraUtils.saveImage(image, path);
+                    }else if(image.getFormat() == ImageFormat.YUV_420_888){
+                        byte [] nv21Byte = ByteDataFormat.formatYUV420_888ToNV21(image);
+                        byte [] jpegByte = ByteDataFormat.NV21_2_JPEG(nv21Byte,image.getWidth(),image.getHeight());
+                        CameraUtils.saveImage(jpegByte,path);
+                    }else{//直接保存照片的拍照方式仅支持JPEG格式以及YUV_420_888格式，其余格式，调用initTakePhotoImageReader(CapturePhotoCallBack)自行实现
+                        image.close();
+                        throw new IllegalArgumentException("The takePhoto('String') method supports olay JPEG and YUV_420_888 format " +
+                                ",recommended to call takePhoto(CapturePhotoCallBack)");
+                    }
+                    image.close();
+                }
+            }
+        },handler);
+    }
+
+    //初始化ImagerReader
+    private void initTakePhotoImageReader(@NonNull final CapturePhotoCallBack capturePhotoCallBack){
+        imageReaderTakePhoto.setOnImageAvailableListener(new ImageReader.OnImageAvailableListener() {
+            @Override
+            public void onImageAvailable(ImageReader reader) {
+                Image image = reader.acquireLatestImage();
+                if(image != null){
+                    capturePhotoCallBack.captureData(image);
                     image.close();
                 }
             }
