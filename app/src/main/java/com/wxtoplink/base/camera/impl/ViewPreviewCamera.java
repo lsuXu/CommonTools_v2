@@ -146,19 +146,29 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
     }
 
     //拍照保存，需传入保存路径
-    public void takePhoto(final String path){
-        initTakePhotoImageReader(path);
-        capturePhoto();
+    public void takePhoto(final String filePath){
+        takePhoto(filePath,false);
+    }
+
+    @Override
+    public void takePhoto(String filePath, boolean stopPreview) {
+        initTakePhotoImageReader(filePath);
+        capturePhoto(stopPreview);
     }
 
     @Override
     public void takePhoto(@NonNull CapturePhotoCallBack capturePhotoCallBack) {
+        takePhoto(capturePhotoCallBack,false);
+    }
+
+    @Override
+    public void takePhoto(CapturePhotoCallBack capturePhotoCallBack, boolean stopPreview) {
         initTakePhotoImageReader(capturePhotoCallBack);
-        capturePhoto();
+        capturePhoto(stopPreview);
     }
 
     //建立拍照请求
-    private void capturePhoto(){
+    private void capturePhoto(boolean stopPreview){
         //执行拍照
         synchronized (ViewPreviewCamera.this){
             if(captureRequestBuilder != null && isPreview()){
@@ -169,6 +179,9 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
                 //将ImageReader添加到Surface中，用于接收数据
                 captureRequestBuilder.addTarget(imageReaderTakePhoto.getSurface());
                 try {
+                    if(stopPreview) {//若需要在拍照后停止预览，则在发送拍照请求前应先停止预览，在拍照回调中停止预览会造成死锁问题
+                        cameraCaptureSession.stopRepeating();
+                    }
                     cameraCaptureSession.capture(captureRequestBuilder.build(), captureCallback, null);
                 } catch (CameraAccessException e) {
                     e.printStackTrace();

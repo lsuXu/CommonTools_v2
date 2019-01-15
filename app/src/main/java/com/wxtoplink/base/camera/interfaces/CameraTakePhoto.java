@@ -12,6 +12,10 @@ public interface CameraTakePhoto {
 
     void takePhoto(String filePath);
 
+    void takePhoto(String filePath , boolean stopPreview);
+
     void takePhoto(CapturePhotoCallBack capturePhotoCallBack);
+
+    void takePhoto(CapturePhotoCallBack capturePhotoCallBack,boolean stopPreview);
 
 }

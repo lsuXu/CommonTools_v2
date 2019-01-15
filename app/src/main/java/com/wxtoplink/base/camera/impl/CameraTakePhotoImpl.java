@@ -51,6 +51,7 @@ public class CameraTakePhotoImpl extends CameraTemplateImpl implements CameraTak
     }
 
 
+    @SuppressLint("MissingPermission")
     @Override
     public synchronized void startPreview() {
         try {
@@ -101,19 +102,29 @@ public class CameraTakePhotoImpl extends CameraTemplateImpl implements CameraTak
     }
 
     //拍照保存，需传入保存路径
-    public void takePhoto(final String path){
-        initTakePhotoImageReader(path);
-        capturePhoto();
+    public void takePhoto(final String filePath){
+        takePhoto(filePath,false);
+    }
+
+    @Override
+    public void takePhoto(String filePath, boolean stopPreview) {
+        initTakePhotoImageReader(filePath);
+        capturePhoto(stopPreview);
     }
 
     @Override
     public void takePhoto(CapturePhotoCallBack capturePhotoCallBack) {
+        takePhoto(capturePhotoCallBack,false);
+    }
+
+    @Override
+    public void takePhoto(CapturePhotoCallBack capturePhotoCallBack, boolean stopPreview) {
         initTakePhotoImageReader(capturePhotoCallBack);
-        capturePhoto();
+        capturePhoto(stopPreview);
     }
 
     //建立拍照请求
-    public void capturePhoto(){
+    public void capturePhoto(boolean stopPreview){
         //执行拍照
         synchronized (CameraTakePhotoImpl.this){
             if(captureRequestBuilder != null && isPreview()){
@@ -124,6 +135,9 @@ public class CameraTakePhotoImpl extends CameraTemplateImpl implements CameraTak
                 //将ImageReader添加到Surface中，用于接收数据
                 captureRequestBuilder.addTarget(imageReader.getSurface());
                 try {
+                    if(stopPreview){//若需要在拍照后停止预览，则在发送拍照请求前应先停止预览，在拍照回调中停止预览会造成死锁问题
+                        cameraCaptureSession.stopRepeating();
+                    }
                     cameraCaptureSession.capture(captureRequestBuilder.build(), captureCallback, null);
                 } catch (CameraAccessException e) {
                     e.printStackTrace();
@@ -134,7 +148,7 @@ public class CameraTakePhotoImpl extends CameraTemplateImpl implements CameraTak
 
 
     //初始化拍照ImageReader
-    private void initTakePhotoImageReader(final String path){
+    private void initTakePhotoImageReader(final String filePath){
 
         imageReader.setOnImageAvailableListener(new ImageReader.OnImageAvailableListener() {
             @Override
@@ -142,11 +156,11 @@ public class CameraTakePhotoImpl extends CameraTemplateImpl implements CameraTak
                 Image image = reader.acquireLatestImage();
                 if(image != null){
                     if(image.getFormat() == ImageFormat.JPEG) {
-                        CameraUtils.saveImage(image, path);
+                        CameraUtils.saveImage(image, filePath);
                     }else if(image.getFormat() == ImageFormat.YUV_420_888){
                         byte [] nv21Byte = ByteDataFormat.formatYUV420_888ToNV21(image);
                         byte [] jpegByte = ByteDataFormat.NV21_2_JPEG(nv21Byte,image.getWidth(),image.getHeight());
-                        CameraUtils.saveImage(jpegByte,path);
+                        CameraUtils.saveImage(jpegByte,filePath);
                     }else{//直接保存照片的拍照方式仅支持JPEG格式以及YUV_420_888格式，其余格式，调用initTakePhotoImageReader(CapturePhotoCallBack)自行实现
                         image.close();
                         throw new IllegalArgumentException("The takePhoto('String') method supports olay JPEG and YUV_420_888 format " +

@@ -20,13 +20,13 @@ import java.util.Map;
 
 public class CameraComponent {
 
-
     private Map<String,CameraTemplate> cameraTemplateMap ;
 
     private CameraComponent(){
         cameraTemplateMap = new HashMap<>();
     }
 
+    private CameraType currentCameraType ;
 
     public static CameraComponent getInstance(){
         return CameraHolder.instance ;
@@ -38,6 +38,7 @@ public class CameraComponent {
         CameraTemplate cameraTemplate = null;
         if(cameraTemplateMap.containsKey(cameraType.getTypeName())){
             cameraTemplate =  cameraTemplateMap.get(cameraType.getTypeName());
+            currentCameraType = cameraType ;//标记当前使用的相机类型
         }else{
             try {
                 Constructor constructor = cameraType.getTargetClass().getConstructor(Context.class);
@@ -45,6 +46,7 @@ public class CameraComponent {
                     cameraTemplate = (CameraTemplate) constructor.newInstance(context);
                     if (cameraTemplate != null) {
                         cameraTemplateMap.put(cameraType.getTypeName(), cameraTemplate);
+                        currentCameraType = cameraType ;//标记当前使用的相机类型
                     }
                 }
             }catch (NoSuchMethodException e) {
@@ -65,6 +67,20 @@ public class CameraComponent {
         for(CameraTemplate cameraTemplate : cameraTemplateMap.values()){
             cameraTemplate.stopPreview();
         }
+    }
+
+    //获取当前正在使用的相机类型
+    public CameraType getCurrentCameraType() {
+        return currentCameraType;
+    }
+
+    //当前是否存在相机正在预览
+    public boolean isPreview(){
+        boolean isPreview = false ;
+        for(CameraTemplate cameraTemplate : cameraTemplateMap.values()){
+            isPreview = isPreview || cameraTemplate.isPreview();
+        }
+        return isPreview ;
     }
 
 

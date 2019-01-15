@@ -144,6 +144,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate,CameraListene
         this.maxSize = maxSize ;
     }
 
+    @Override
     public boolean isPreview(){
         return isPreview ;
     }
@@ -200,6 +201,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate,CameraListene
         }
     }
 
+
     //预设将会用到的所有获取显示图像数据的预览目标surface列表
     public abstract List<Surface> getTotalSurfaceList();
 
@@ -225,6 +227,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate,CameraListene
         @Override
         public void onDisconnected(@NonNull CameraDevice camera) {
             cameraDevice = null ;
+            isPreview = false ;
             Log.e(TAG,"camera disconnected");
         }
 
@@ -245,8 +248,10 @@ public abstract class CameraTemplateImpl implements CameraTemplate,CameraListene
         @Override
         public void onConfigured(@NonNull CameraCaptureSession session) {
             //若相机失去连接或以关闭
-            if(cameraDevice == null)
+            if(cameraDevice == null) {
+                isPreview = false ;
                 return;
+            }
             for (CameraStatusListener cameraStatusListener: cameraStatusListeners){//状态回调
                 cameraStatusListener.onConfigured();
             }
@@ -321,25 +326,16 @@ public abstract class CameraTemplateImpl implements CameraTemplate,CameraListene
         if(cameraStatusListeners == null){
             cameraStatusListeners = new ArrayList<>();
         }
-        if(cameraStatusListeners.contains(cameraStatusListener)){
-            return false ;
-        }else{
-            cameraStatusListeners.add(cameraStatusListener);
-            return true ;
-        }
+        return cameraStatusListeners.add(cameraStatusListener);
     }
 
     @Override
     public boolean removeListener(CameraStatusListener cameraStatusListener) {
-        if(cameraStatusListeners == null || cameraStatusListeners.size() == 0){
+        if(cameraStatusListeners == null ){
             return false ;
-        }else {
-            if(cameraStatusListeners.contains(cameraStatusListener)){
-                cameraStatusListeners.remove(cameraStatusListener);
-                return true ;
-            }
         }
-        return false;
+
+        return cameraStatusListeners.remove(cameraStatusListener);
     }
 
     @Override

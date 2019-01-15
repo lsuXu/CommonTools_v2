@@ -18,4 +18,6 @@ public interface CameraTemplate {
 
     void setMaxSize(Size maxSize);
 
+    boolean isPreview();
+
 }
