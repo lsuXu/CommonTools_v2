@@ -1,5 +1,6 @@
 package com.wxtoplink.base.camera.interfaces;
 
+import android.util.Size;
 import android.view.TextureView;
 
 /**
@@ -10,12 +11,18 @@ public interface CameraTakePhoto {
 
     void setSurfaceView(TextureView textureView);
 
-    void takePhoto(String filePath);
+    void setPhotoFormat(int photoFormat);//设置照片格式
 
-    void takePhoto(String filePath , boolean stopPreview);
+    void setPhotoMaxSize(Size photoMaxSize);//设置照片最大大小
 
-    void takePhoto(CapturePhotoCallBack capturePhotoCallBack);
+    Size getFitPhotoSize();//获取适合的照片大小，根据photoMaxSize计算得出
 
-    void takePhoto(CapturePhotoCallBack capturePhotoCallBack,boolean stopPreview);
+    void takePhoto(String filePath);//拍照直接保存到文件
+
+    void takePhoto(String filePath , boolean stopPreview);//拍照直接保存到文件，可选拍照后是否直接停止预览
+
+    void takePhoto(CapturePhotoCallBack capturePhotoCallBack);//拍照
+
+    void takePhoto(CapturePhotoCallBack capturePhotoCallBack,boolean stopPreview);//拍照回调数据，可选拍照后是否直接停止预览
 
 }

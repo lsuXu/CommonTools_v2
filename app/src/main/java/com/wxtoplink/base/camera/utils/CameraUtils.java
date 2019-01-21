@@ -31,7 +31,7 @@ public class CameraUtils {
 
     private static final String TAG = CameraUtils.class.getSimpleName() ;
 
-    public static Size getFitPreviewSize(@NonNull Context context,@Nullable String cameraId,@NonNull int format,@Nullable Size maxSize){
+    public static Size getFitSize(@NonNull Context context,@Nullable String cameraId,@NonNull int format,@Nullable Size maxSize){
         CameraManager cameraManager ;
 
         try {
@@ -46,7 +46,7 @@ public class CameraUtils {
                 throw new IllegalArgumentException(String.format(
                         "format 0x%x was not defined in either ImageFormat or PixelFormat", format));
             }
-            return CameraUtils.getFitPreviewSize(Arrays.asList(supportSize),maxSize);
+            return CameraUtils.getFitSize(Arrays.asList(supportSize),maxSize);
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
@@ -54,7 +54,7 @@ public class CameraUtils {
         return null ;
     }
 
-    public static Size getFitPreviewSize(@NonNull List<Size> sizeList,@Nullable Size maxSize){
+    public static Size getFitSize(@NonNull List<Size> sizeList,@Nullable Size maxSize){
         /**
          * 基于图片的区域( 宽 * 高 )，比较它们的大小，进行排序
          */

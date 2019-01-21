@@ -10,13 +10,17 @@ public interface CameraTemplate {
 
     void startPreview();
 
+    void openCamera();
+
     void stopPreview();
 
     void setCameraId(String cameraId);
 
-    void setImageFormat(int imageFormat);
+    void setPreviewFormat(int previewFormat);
 
-    void setMaxSize(Size maxSize);
+    void setPreviewMaxSize(Size maxSize);
+
+    Size getPreviewFitSize();
 
     boolean isPreview();
 

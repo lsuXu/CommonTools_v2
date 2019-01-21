@@ -14,7 +14,6 @@ import android.media.ImageReader;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.support.annotation.NonNull;
-import android.support.annotation.RequiresPermission;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 import android.util.Size;
@@ -38,21 +37,23 @@ public abstract class CameraTemplateImpl implements CameraTemplate,CameraListene
 
     private static final String TAG = CameraTemplateImpl.class.getSimpleName();
 
-    public CameraTemplateImpl(Context context) {
+    CameraTemplateImpl(Context context) {
         this.context = context;
     }
 
-    private boolean isPreview = false;
+    private boolean isPreview = false;//是否正在预览
 
-    protected Size maxSize ;
+    private Size previewMaxSize ;//允许的最大预览大小
 
-    protected int format ;
+    private Size previewFitSize ;//合适的预览大小
 
-    protected CameraManager cameraManager;
+    protected int previewFormat ;
+
+    private CameraManager cameraManager;
 
     protected Context context;
 
-    protected String cameraId;
+    private String cameraId;//相机ID
 
     private CameraDevice cameraDevice;
 
@@ -70,26 +71,14 @@ public abstract class CameraTemplateImpl implements CameraTemplate,CameraListene
 
     private List<CameraStatusListener> cameraStatusListeners = null;
 
-    @RequiresPermission(android.Manifest.permission.CAMERA)
     @Override
-    public synchronized void startPreview() {
-        Log.i(TAG, "camera startPreview:" + isPreview);
+    public void openCamera() {
         if(cameraStatusListeners == null){
             cameraStatusListeners = new ArrayList<>();
-        }
-        if(cameraId == null){
-            try {
-                cameraId = CameraUtils.getDefaultCameraId(context);
-            } catch (CameraAccessException e) {
-                e.printStackTrace();
-            }
         }
         if (!isPreview) {
             isPreview = true;
             startBackgroundThread();
-            if(cameraManager == null) {
-                cameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
-            }
 
             //打开相机，再CameraDevice.StateCallback回调中监听相机打开状态
             if (ActivityCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
@@ -99,13 +88,33 @@ public abstract class CameraTemplateImpl implements CameraTemplate,CameraListene
             }
             try {
                 //打开相机，在stateCallback中进行下一步
-                cameraManager.openCamera(cameraId, stateCallback, mBackgroundHandler);
+                getCameraManager().openCamera(getCameraId(), stateCallback, mBackgroundHandler);
             } catch (CameraAccessException e) {
                 e.printStackTrace();
             }
 
         }
+    }
 
+    //获取需要打开的相机ID
+    protected String getCameraId(){
+        if(cameraId == null){
+            try {
+                cameraId = CameraUtils.getDefaultCameraId(context);
+            } catch (CameraAccessException e) {
+                e.printStackTrace();
+            }
+        }
+        return cameraId ;
+    }
+
+    //获取cameraManager
+    protected CameraManager getCameraManager(){
+        if(cameraManager == null){
+            cameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
+        }
+
+        return cameraManager ;
     }
 
     //停止相机预览
@@ -117,7 +126,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate,CameraListene
                 if (cameraCaptureSession != null) {
                     synchronized (cameraCaptureSession) {
                         cameraCaptureSession.close();
-                        cameraCaptureSession = null;
+                          cameraCaptureSession = null;
                     }
                 }
                 if (cameraDevice != null) {
@@ -135,18 +144,26 @@ public abstract class CameraTemplateImpl implements CameraTemplate,CameraListene
     }
 
     @Override
-    public void setImageFormat(int imageFormat) {
-        this.format = imageFormat ;
+    public void setPreviewFormat(int previewFormat) {
+        this.previewFormat = previewFormat ;
     }
 
     @Override
-    public void setMaxSize(Size maxSize) {
-        this.maxSize = maxSize ;
+    public void setPreviewMaxSize(Size previewMaxSize) {
+        this.previewMaxSize = previewMaxSize ;
     }
 
     @Override
     public boolean isPreview(){
         return isPreview ;
+    }
+
+    @Override
+    public Size getPreviewFitSize () {
+        if(previewFitSize == null) {
+            previewFitSize = CameraUtils.getFitSize(context,getCameraId(),previewFormat, previewMaxSize);
+        }
+        return previewFitSize;
     }
 
     //创建相机预览会话
@@ -159,11 +176,11 @@ public abstract class CameraTemplateImpl implements CameraTemplate,CameraListene
                         captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
 
                         //无界面预览，在这里处理，不加入预览界面的surface,则不会输出预览界面
-                        for(Surface surface: getSurfaceList()){
+                        for(Surface surface: getPreviewSurfaceList()){
                             captureRequestBuilder.addTarget(surface);
                         }
                         //CameraDevice创建一个会话请求，再指定SurfaceView中进行绘制，再CameraCaptureSession.StateCallback中监听创建请求的结果并做相应配置
-                        cameraDevice.createCaptureSession(getTotalSurfaceList(), captureStateCallback, mBackgroundHandler);
+                        cameraDevice.createCaptureSession(getPresetSurfaceList(), captureStateCallback, mBackgroundHandler);
 
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -203,10 +220,10 @@ public abstract class CameraTemplateImpl implements CameraTemplate,CameraListene
 
 
     //预设将会用到的所有获取显示图像数据的预览目标surface列表
-    public abstract List<Surface> getTotalSurfaceList();
+    public abstract List<Surface> getPresetSurfaceList();
 
     //初始状态的surface列表
-    public abstract List<Surface> getSurfaceList();
+    public abstract List<Surface> getPreviewSurfaceList();
 
         /*----相机的回调处理----*/
 
@@ -263,7 +280,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate,CameraListene
                     //设置以最快速度进行对焦
                     captureRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
                     //设置预览视图的旋转方向
-                    captureRequestBuilder.set(CaptureRequest.JPEG_ORIENTATION, CameraUtils.getOrientation(context,cameraId));
+                    captureRequestBuilder.set(CaptureRequest.JPEG_ORIENTATION, CameraUtils.getOrientation(context,getCameraId()));
                     //创建捕获请求
                     captureRequest = captureRequestBuilder.build();
 

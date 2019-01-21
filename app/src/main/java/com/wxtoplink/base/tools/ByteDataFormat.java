@@ -92,30 +92,44 @@ public class ByteDataFormat {
         if(image.getFormat() != ImageFormat.YUV_420_888) {
             throw new IllegalArgumentException("only support ImageFormat.YUV_420_888");
         }
-        Image.Plane[] planes = image.getPlanes(); // in YUV420_888 format
-        int acc = 0;
-        ByteBuffer[] buff = new ByteBuffer[planes.length];
+        byte [] nv21 ;
+        Image.Plane yPlane = image.getPlanes()[0];//y分量，显示亮度
+        Image.Plane uPlane = image.getPlanes()[1];//U分量，与V分量一同决定色彩
+        Image.Plane vPlane = image.getPlanes()[2];//V分量，与U分量一同决定色彩
 
-        for (int i = 0; i < planes.length; i++) {
-            buff[i] = planes[i].getBuffer();
-            acc += buff[i].capacity();
+        ByteBuffer yBuffer = yPlane.getBuffer();
+        ByteBuffer uBuffer = uPlane.getBuffer();
+        ByteBuffer vBuffer = vPlane.getBuffer();
+
+        int pixelStride = uPlane.getPixelStride();//像素跨步，用于区分Planar(步数为1)环境，以及SemiPlanar(步数为2)环境
+
+        int ySize = yBuffer.remaining();
+        int uSize = uBuffer.remaining();
+        int vSize = vBuffer.remaining();
+
+        nv21 = new byte[ySize + ySize/2];//nv21数据是y分量的1.5倍
+
+        byte[] uByte = new byte[uSize];
+        byte[] vByte = new byte[vSize];
+        yBuffer.get(nv21,0,ySize);//填充Y部分
+        vBuffer.get(vByte);
+        uBuffer.get(uByte);
+        if(pixelStride == 1){//步数等于1，说明，uv已经分离
+            for(int i = 0; i < ySize/2 ; i = i + 2){
+                nv21[ySize + i] = vByte[i/2];
+                nv21[ySize + i + 1] = uByte[i/2];
+            };
+
+        }else{//像素步数为2，说明uv尚未分离,uv交错
+            for(int i = 0 ;i < ySize/2;i= i + 2){
+                nv21[ySize + i] = vByte[i];
+                nv21[ySize + i + 1] = uByte[i];
+            };
+            //高效方式，Android 不保证UV分量一定正确输出
+//            vBuffer.get(nv21,ySize,vSize);
         }
-        byte[] data = new byte[acc],
-                tmpCb = new byte[buff[1].capacity()] , tmpCr = new byte[buff[2].capacity()];
 
-        buff[0].get(data, 0, buff[0].capacity()); // Y
-        acc = buff[0].capacity();
-
-        buff[2].get(tmpCr, 0, buff[2].capacity()); // Cr-V
-        buff[1].get(tmpCb, 0, buff[1].capacity()); // Cb-U
-
-        for(int i = 0; i <tmpCb.length;i++){
-            data[acc] = tmpCr[i];
-            data[acc +1] = tmpCb[i];
-            acc = acc + 2 ;
-        }
-
-        return data ;
+        return nv21;
     }
 
     /**
@@ -142,9 +156,5 @@ public class ByteDataFormat {
         return byteArrayOutputStream.toByteArray();
     }
 
-    public static byte[] formatJPEG_NV21(int[] rgba,int width, int height){
-
-        return null ;
-    }
 
 }

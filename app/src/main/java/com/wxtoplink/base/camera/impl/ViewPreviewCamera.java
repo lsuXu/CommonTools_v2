@@ -12,6 +12,7 @@ import android.media.ImageReader;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.support.annotation.NonNull;
+import android.support.annotation.RequiresPermission;
 import android.util.Size;
 import android.view.Surface;
 import android.view.TextureView;
@@ -33,42 +34,46 @@ import java.util.List;
 
 public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakePhoto,CameraPreviewData{
 
-    private ImageReader imageReaderPreview ;
-    private ImageReader imageReaderTakePhoto ;
+    private ImageReader previewImageReader ;
+    private ImageReader photoImageReader ;
     private TextureView textureView ;
     private HandlerThread handlerThread ;
     private Handler handler ;
     private PreviewDataCallBack previewDataCallBack ;
 
+    private int photoFormat ;
+    private Size photoMaxSize ;
+    private Size photoFitSize ;
+
     public ViewPreviewCamera(Context context) {
         super(context);
-        format = ImageFormat.YUV_420_888 ;//有界面以及预览数据，当前仅支持使用YUV_420_888数据格式
+        photoFormat = ImageFormat.YUV_420_888 ;//有界面以及预览数据，当前仅支持使用YUV_420_888数据格式
         startHandleThread();
     }
 
     //初始使用的绘制表面
     @Override
-    public List<Surface> getSurfaceList() {
+    public List<Surface> getPreviewSurfaceList() {
         return Arrays.asList(new Surface(textureView.getSurfaceTexture()),
-                imageReaderPreview.getSurface());
+                previewImageReader.getSurface());
     }
 
     //所有将会用到的表面
     @Override
-    public List<Surface> getTotalSurfaceList() {
+    public List<Surface> getPresetSurfaceList() {
         return Arrays.asList(new Surface(textureView.getSurfaceTexture()),//预览显示
-                imageReaderPreview.getSurface(),//后台数据处理
-                imageReaderTakePhoto.getSurface());//拍照数据保存
+                previewImageReader.getSurface(),//后台数据处理
+                photoImageReader.getSurface());//拍照数据保存
     }
 
-    private void initImagerReader(){
+    private void initPreviewImagerReader(){
         //初始化预览数据回调的imageReader
-        Size fitSize =  CameraUtils.getFitPreviewSize(context,cameraId,format,maxSize) ;
-        imageReaderPreview = ImageReader.newInstance(fitSize.getWidth(),fitSize.getHeight(),format,2);
-        imageReaderPreview.setOnImageAvailableListener(new ImageReader.OnImageAvailableListener() {
+        Size fitSize = getPreviewFitSize() ;
+        previewImageReader = ImageReader.newInstance(fitSize.getWidth(),fitSize.getHeight(),previewFormat,2);
+        previewImageReader.setOnImageAvailableListener(new ImageReader.OnImageAvailableListener() {
             @Override
             public void onImageAvailable(ImageReader reader) {
-                Image image = imageReaderPreview.acquireLatestImage();
+                Image image = previewImageReader.acquireLatestImage();
                 if(image != null){
                     if(previewDataCallBack != null){
                         previewDataCallBack.previewData(image);
@@ -79,24 +84,24 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
         },handler);
 
         //初始化拍照回调的imageReader,使用JPEG格式，最大支持大小
-        Size size = CameraUtils.getFitPreviewSize(context,cameraId,format,null);
-        imageReaderTakePhoto = ImageReader.newInstance(size.getWidth(),size.getHeight(),format,1);
+        Size photoFitSize = getFitPhotoSize();
+        photoImageReader = ImageReader.newInstance(photoFitSize.getWidth(),photoFitSize.getHeight(),photoFormat,1);
     }
 
 
-    @SuppressLint("MissingPermission")
     @Override
+    @RequiresPermission(android.Manifest.permission.CAMERA)
     public synchronized void startPreview() {
 
         //初始化imagerReader
-        initImagerReader();
+        initPreviewImagerReader();
 
         if(textureView == null){
             throw new NullPointerException("The target canvas is null ,You should call setSurfaceView() before calling startPreview()");
         }else{
             if(textureView.isAvailable()){
                 //预览界面存在，且当前状态可获取
-                super.startPreview();
+                openCamera();
             }else{
                 //预览界面没有准备好，那么设置预览界面的监听器，等它准备好后再重新开始预览
                 textureView.setSurfaceTextureListener(textureListener);
@@ -127,13 +132,13 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
     @Override
     public synchronized void stopPreview() {
         super.stopPreview();
-        if(imageReaderPreview != null){
-            imageReaderPreview.close();
-            imageReaderPreview = null ;
+        if(previewImageReader != null){
+            previewImageReader.close();
+            previewImageReader = null ;
         }
-        if(imageReaderTakePhoto != null){
-            imageReaderTakePhoto.close();
-            imageReaderTakePhoto = null ;
+        if(photoImageReader != null){
+            photoImageReader.close();
+            photoImageReader = null ;
         }
 
         stopHandleThread();
@@ -145,6 +150,24 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
         this.textureView = view ;
     }
 
+    @Override
+    public void setPhotoFormat(int photoFormat) {
+        this.photoFormat = photoFormat ;
+    }
+
+    @Override
+    public void setPhotoMaxSize(Size photoMaxSize) {
+        this.photoMaxSize = photoMaxSize ;
+    }
+
+    @Override
+    public Size getFitPhotoSize() {
+        if(photoFitSize == null){
+            photoFitSize = CameraUtils.getFitSize(context,getCameraId(),photoFormat,photoMaxSize);
+        }
+        return photoFitSize;
+    }
+
     //拍照保存，需传入保存路径
     public void takePhoto(final String filePath){
         takePhoto(filePath,false);
@@ -152,7 +175,7 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
 
     @Override
     public void takePhoto(String filePath, boolean stopPreview) {
-        initTakePhotoImageReader(filePath);
+        initPhotoImageReader(filePath);
         capturePhoto(stopPreview);
     }
 
@@ -163,7 +186,7 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
 
     @Override
     public void takePhoto(CapturePhotoCallBack capturePhotoCallBack, boolean stopPreview) {
-        initTakePhotoImageReader(capturePhotoCallBack);
+        initPhotoImageReader(capturePhotoCallBack);
         capturePhoto(stopPreview);
     }
 
@@ -175,9 +198,9 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
                 //设置相机进行自动对焦
                 captureRequestBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START);
                 //设置拍照后图片的旋转方向
-                captureRequestBuilder.set(CaptureRequest.JPEG_ORIENTATION, CameraUtils.getOrientation(context,cameraId));
+                captureRequestBuilder.set(CaptureRequest.JPEG_ORIENTATION, CameraUtils.getOrientation(context,getCameraId()));
                 //将ImageReader添加到Surface中，用于接收数据
-                captureRequestBuilder.addTarget(imageReaderTakePhoto.getSurface());
+                captureRequestBuilder.addTarget(photoImageReader.getSurface());
                 try {
                     if(stopPreview) {//若需要在拍照后停止预览，则在发送拍照请求前应先停止预览，在拍照回调中停止预览会造成死锁问题
                         cameraCaptureSession.stopRepeating();
@@ -219,9 +242,9 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
     };
 
     //初始化拍照ImageReader
-    private void initTakePhotoImageReader(final String path){
+    private void initPhotoImageReader(final String path){
 
-        imageReaderTakePhoto.setOnImageAvailableListener(new ImageReader.OnImageAvailableListener() {
+        photoImageReader.setOnImageAvailableListener(new ImageReader.OnImageAvailableListener() {
             @Override
             public void onImageAvailable(ImageReader reader) {
                 Image image = reader.acquireLatestImage();
@@ -244,8 +267,8 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
     }
 
     //初始化ImagerReader
-    private void initTakePhotoImageReader(@NonNull final CapturePhotoCallBack capturePhotoCallBack){
-        imageReaderTakePhoto.setOnImageAvailableListener(new ImageReader.OnImageAvailableListener() {
+    private void initPhotoImageReader(@NonNull final CapturePhotoCallBack capturePhotoCallBack){
+        photoImageReader.setOnImageAvailableListener(new ImageReader.OnImageAvailableListener() {
             @Override
             public void onImageAvailable(ImageReader reader) {
                 Image image = reader.acquireLatestImage();
