@@ -13,6 +13,11 @@ public class CameraStatusListenerAdapt implements CameraStatusListener{
     }
 
     @Override
+    public void onDisconnected() {
+
+    }
+
+    @Override
     public void onOpenError() {
 
     }

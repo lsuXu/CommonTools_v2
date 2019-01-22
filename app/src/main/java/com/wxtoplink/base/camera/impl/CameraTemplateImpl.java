@@ -93,6 +93,11 @@ public abstract class CameraTemplateImpl implements CameraTemplate,CameraListene
                 e.printStackTrace();
             }
 
+        }else{
+            if(cameraDevice != null){
+                //创建相机预览会话
+                createCameraPreviewSession();
+            }
         }
     }
 
@@ -245,6 +250,9 @@ public abstract class CameraTemplateImpl implements CameraTemplate,CameraListene
         public void onDisconnected(@NonNull CameraDevice camera) {
             cameraDevice = null ;
             isPreview = false ;
+            for(CameraStatusListener cameraStatusListener :cameraStatusListeners){//状态回调
+                cameraStatusListener.onDisconnected();
+            }
             Log.e(TAG,"camera disconnected");
         }
 

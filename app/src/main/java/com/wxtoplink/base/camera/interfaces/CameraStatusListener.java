@@ -8,6 +8,8 @@ public interface CameraStatusListener {
 
     //相机打开成功
     void onOpened();
+    //相机失去连接
+    void onDisconnected();
     //相机打开失败
     void onOpenError();
     //相机配置会话成功
