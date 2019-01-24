@@ -8,7 +8,7 @@ android {
         minSdkVersion 21
         targetSdkVersion 26
         versionCode 1
-        versionName "1.1.6"
+        versionName "1.1.7"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
@@ -48,5 +48,5 @@ task makeJar(type:Copy){
     //现在只需要classes.jar这个文件
     include('classes.jar')
     //重命名
-    rename('classes.jar','base_tools_v2_1_1_6.jar')
+    rename('classes.jar','base_tools_v2_1_1_7.jar')
 }

@@ -114,13 +114,13 @@ public class ByteDataFormat {
         yBuffer.get(nv21,0,ySize);//填充Y部分
         vBuffer.get(vByte);
         uBuffer.get(uByte);
-        if(pixelStride == 1){//步数等于1，说明，uv已经分离
+        if(pixelStride == 1){//步伐等于1，说明，uv已经分离
             for(int i = 0; i < ySize/2 ; i = i + 2){
                 nv21[ySize + i] = vByte[i/2];
                 nv21[ySize + i + 1] = uByte[i/2];
             };
 
-        }else{//像素步数为2，说明uv尚未分离,uv交错
+        }else{//像素步伐为2，说明uv尚未分离,uv交错
             for(int i = 0 ;i < ySize/2;i= i + 2){
                 nv21[ySize + i] = vByte[i];
                 nv21[ySize + i + 1] = uByte[i];
@@ -156,5 +156,76 @@ public class ByteDataFormat {
         return byteArrayOutputStream.toByteArray();
     }
 
+
+    /**
+     * 所有方法传递的数据格式需要为JPEG格式
+     */
+    public static final class JPEGTransform{
+
+        //变换
+        public static byte[] transformBytes(byte[] jpegByte,Matrix matrix){
+            Bitmap bitmap = conventByte2Bitmap(jpegByte);
+            return conventBitmap2Bytes(transformBitmap(bitmap,matrix));
+        }
+
+        //变换
+        public static Bitmap transformBitmap(Bitmap bitmap,Matrix matrix){
+            return Bitmap.createBitmap(bitmap,0,0,bitmap.getWidth(),bitmap.getHeight(),matrix,true);
+        }
+
+        /**
+         * 图片数据按给定宽高进行缩放
+         * @param jpegBytes Image data stream
+         * @param width Target image width
+         * @param height Target image height
+         * @return
+         */
+        public static byte[] scalingBytes(byte[] jpegBytes,float width,float height){
+            return conventBitmap2Bytes(scalingBitmap(conventByte2Bitmap(jpegBytes),width,height));
+        }
+
+        /**
+         * 缩放bitmap
+         * @param bitmap bitmap source
+         * @param width Target width
+         * @param height Target height
+         * @return
+         */
+        public static Bitmap scalingBitmap(Bitmap bitmap,float width,float height){
+            Matrix matrix = new Matrix();
+            float currentWidth = bitmap.getWidth();
+            float currentHeight = bitmap.getHeight();
+            float scaleX = width/currentWidth ;
+            float scaleY = height/currentHeight ;
+            matrix.postScale(scaleX,scaleY);
+            return transformBitmap(bitmap,matrix);
+        }
+
+        //翻转图片
+        public static byte[] rotateBytes(byte[] jpegBytes, int rotate) {
+            Matrix matrix = new Matrix();
+            matrix.postRotate(rotate);
+
+            return transformBytes(jpegBytes,matrix);
+        }
+
+        public static Bitmap rotateBitmap(Bitmap bitmap,int rotate){
+            Matrix matrix = new Matrix();
+            matrix.postRotate(rotate);
+            return transformBitmap(bitmap,matrix);
+        }
+
+        //将byte转换为Bitmap
+        public static Bitmap conventByte2Bitmap(byte[] jpegBytes){
+            return BitmapFactory.decodeByteArray(jpegBytes,0,jpegBytes.length);
+        }
+
+        //将bitmap转换为byte
+        public static byte[] conventBitmap2Bytes(Bitmap bitmap){
+            ByteArrayOutputStream ops = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.JPEG,100,ops);
+            return ops.toByteArray();
+        }
+    }
 
 }

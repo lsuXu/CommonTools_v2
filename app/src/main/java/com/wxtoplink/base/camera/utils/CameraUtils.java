@@ -118,10 +118,10 @@ public class CameraUtils {
 
 
     //获取一个可用的相机ID
-    public static String getDefaultCameraId(@NonNull Context context) throws CameraAccessException {
+    public static String getDefaultCameraId(@NonNull Context context) throws CameraAccessException{
         String [] cameraList = null;
         //获取CameraID
-        cameraList = ((CameraManager) context.getApplicationContext().getSystemService(Context.CAMERA_SERVICE)).getCameraIdList();
+        cameraList = getCameraList(context);
 
         if(cameraList.length > 0){
             //设置默认相机ID
@@ -129,6 +129,10 @@ public class CameraUtils {
         }else{
             throw new IllegalArgumentException("The device does not support cameras");
         }
+    }
+
+    public static String [] getCameraList(@NonNull Context context) throws CameraAccessException{
+        return ((CameraManager) context.getApplicationContext().getSystemService(Context.CAMERA_SERVICE)).getCameraIdList();
     }
 
     //校验相机ID是否可用

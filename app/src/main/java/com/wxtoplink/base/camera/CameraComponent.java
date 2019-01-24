@@ -1,14 +1,20 @@
 package com.wxtoplink.base.camera;
 
+import android.Manifest;
 import android.content.Context;
+import android.content.pm.PackageManager;
+import android.hardware.camera2.CameraAccessException;
+import android.os.Build;
 
 import com.wxtoplink.base.camera.impl.NoViewPreviewCamera;
 import com.wxtoplink.base.camera.impl.CameraTakePhotoImpl;
 import com.wxtoplink.base.camera.impl.ViewPreviewCamera;
 import com.wxtoplink.base.camera.interfaces.CameraTemplate;
+import com.wxtoplink.base.camera.utils.CameraUtils;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.security.Permission;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -34,32 +40,44 @@ public class CameraComponent {
 
     //设置相机用途，使用相机组件，需要第一个被调用来初始化相机
     public synchronized CameraTemplate getCamera(CameraType cameraType, Context context){
-        safeRelease();
-        CameraTemplate cameraTemplate = null;
-        if(cameraTemplateMap.containsKey(cameraType.getTypeName())){
-            cameraTemplate =  cameraTemplateMap.get(cameraType.getTypeName());
-            currentCameraType = cameraType ;//标记当前使用的相机类型
-        }else{
-            try {
-                Constructor constructor = cameraType.getTargetClass().getConstructor(Context.class);
-                if(constructor != null) {
-                    cameraTemplate = (CameraTemplate) constructor.newInstance(context);
-                    if (cameraTemplate != null) {
-                        cameraTemplateMap.put(cameraType.getTypeName(), cameraTemplate);
-                        currentCameraType = cameraType ;//标记当前使用的相机类型
-                    }
+        try {
+            if(enableCamera(context)) {
+                safeRelease();
+                CameraTemplate cameraTemplate = null;
+                if (cameraTemplateMap.containsKey(cameraType.getTypeName())) {
+                    cameraTemplate = cameraTemplateMap.get(cameraType.getTypeName());
+                    currentCameraType = cameraType;//标记当前使用的相机类型
+                } else {
+                        Constructor constructor = cameraType.getTargetClass().getConstructor(Context.class);
+                        if (constructor != null) {
+                            cameraTemplate = (CameraTemplate) constructor.newInstance(context);
+                            if (cameraTemplate != null) {
+                                cameraTemplateMap.put(cameraType.getTypeName(), cameraTemplate);
+                                currentCameraType = cameraType;//标记当前使用的相机类型
+                            }
+                        }
                 }
-            }catch (NoSuchMethodException e) {
-                e.printStackTrace();
-            } catch (InstantiationException e) {
-                e.printStackTrace();
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            } catch (InvocationTargetException e) {
-                e.printStackTrace();
+                return cameraTemplate;
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        return cameraTemplate;
+
+        return null ;
+    }
+
+    //检查相机是否可用
+    public boolean enableCamera(Context context) throws CameraAccessException {
+
+        //6.0版本，检查相机数量以及权限
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M){
+            return CameraUtils.getCameraList(context).length >0
+                    && context.checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED ;
+        }else {
+            //小于6.0版本，检查是否大于5.0版本（camera2 API从5.0版本开始引入,当前未向下兼容），且相机可用数大于0
+            return Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP
+                    && CameraUtils.getCameraList(context).length >0;
+        }
     }
 
     //释放相机资源
