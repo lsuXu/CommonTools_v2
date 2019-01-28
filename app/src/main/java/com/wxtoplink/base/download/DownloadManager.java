@@ -13,10 +13,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import io.reactivex.functions.Consumer;
 import io.reactivex.functions.Function;
-import io.reactivex.schedulers.Schedulers;
 import okhttp3.ResponseBody;
 
 /**
@@ -32,17 +33,26 @@ public class DownloadManager {
     //下载队列
     private List<DownloadTask> downloadQueue ;
 
+    //下载线层，实际的下载文件的线层
+    private ExecutorService downloadExecutors ;
+
+    //等待线层,对下载任务进行增删的管理
+    private ExecutorService waitExecutor ;
+
+
     public static DownloadManager getInstance (){
         return instance;
     };
 
     private DownloadManager(){
         downloadQueue = new ArrayList<>();
+        downloadExecutors = Executors.newSingleThreadExecutor();
+        waitExecutor = Executors.newSingleThreadExecutor();
     }
 
     //添加下载任务
-    public boolean downloadFile(String url ,String fileName,String filePath){
-        return downloadFile(url,fileName,filePath,null);
+    public void downloadFile(String url ,String fileName,String filePath){
+        downloadFile(url,fileName,filePath,null);
     }
 
     /**
@@ -52,15 +62,17 @@ public class DownloadManager {
      * @param downloadListener 网络回调
      * @return
      */
-    public boolean downloadFile(String url,String fileName,String filePath, DownloadListener downloadListener){
-        Log.i(TAG,"新建下载任务：filePath =" + filePath + ";url =" + url + " ;downloadListener =" + downloadListener);
+    public void downloadFile(String url,String fileName,String filePath, DownloadListener downloadListener){
         DownloadTask downloadObject = new DownloadTask(url,fileName,filePath,null,downloadListener);
-        return addDownloadTask(downloadObject);
+        addDownloadTask(downloadObject,true);
     }
 
-    public boolean downloadFile(DownloadTask downloadTask){
-        Log.i(TAG,"新建下载任务：downloadTask =" + downloadTask.toString());
-        return addDownloadTask(downloadTask);
+    public void downloadFile(DownloadTask downloadTask){
+        addDownloadTask(downloadTask,true);
+    }
+
+    public void downloadFile(DownloadTask downloadTask,boolean noRepeat){
+        addDownloadTask(downloadTask,noRepeat);
     }
 
     public List<DownloadTask> getDownloadQueue(){
@@ -69,31 +81,57 @@ public class DownloadManager {
 
     //下载第一步：当下载队列发生改变时执行，判断当前下载状况，决定是否进行文件下载
     private void download(){
+
         if(!downloadQueue.isEmpty() && !DownloadListenerImpl.getInstance().isDownloading()){
-            download(downloadQueue.get(0));
+            startDownload(downloadQueue.get(0));
         }else if(DownloadListenerImpl.getInstance().isDownloading()){
-            Log.i(TAG,"任务下载中");
+
         }else{
             Log.i(TAG,"任务已经全部下载完成");
         }
+
     }
 
     //添加下载任务
-    private boolean addDownloadTask(DownloadTask downloadTask){
-        //下载队列为空或者下载队列中不包含当前任务,添加下载任务
-        if(downloadQueue.isEmpty()){
-            Log.i(TAG,"添加下载任务：hashCode =" + downloadTask.hashCode() + "  ;地址：" + downloadTask);
-            downloadQueue.add(downloadTask);
-            download();
-            return true ;
-        }else if(!isContains(downloadTask)){
-            Log.i(TAG,"添加下载任务：hashCode =" + downloadTask.hashCode() + "  ;地址：" + downloadTask);
-            downloadQueue.add(downloadTask);
-            download();
-            return true ;
-        }
-        Log.i(TAG,"任务已存在：" + downloadTask);
-        return false;
+    private void addDownloadTask(final DownloadTask downloadTask,final boolean noRepeat){
+        waitExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                //下载队列为空或者下载队列中不包含当前任务,添加下载任务
+                if(!noRepeat || downloadQueue.isEmpty()){
+                    Log.i(TAG,"添加下载任务：hashCode =" + downloadTask.hashCode() + "  ;地址：" + downloadTask);
+                    downloadQueue.add(downloadTask);
+                    download();
+                }else if(!isContains(downloadTask)){
+                    Log.i(TAG,"添加下载任务：hashCode =" + downloadTask.hashCode() + "  ;地址：" + downloadTask);
+                    downloadQueue.add(downloadTask);
+                    download();
+                }
+                Log.i(TAG,"任务已存在：" + downloadTask);
+            }
+        });
+    };
+
+    //移除下载任务
+    private void removeDownloadTask(final DownloadTask downloadTask){
+        waitExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                if(downloadQueue.contains(downloadTask)){
+                    Log.i(TAG,"删除下载任务：" + downloadTask.toString());
+                    downloadQueue.remove(downloadTask);
+                }
+                //移除下载任务回调
+                DownloadListenerImpl.getInstance().onRemoveQueue(downloadQueue.size());
+
+                download();
+
+                //如果全部下载完成，执行完成回调
+                if(!hasNext()){
+                    DownloadListenerImpl.getInstance().onAllComplete();
+                }
+            }
+        });
     }
 
     //是否已经存在这个任务
@@ -109,102 +147,90 @@ public class DownloadManager {
         return false;
     }
 
-    //移除下载任务
-    private boolean removeDownloadTask(DownloadTask downloadTask){
-        if(downloadQueue.contains(downloadTask)){
-            Log.i(TAG,"删除下载任务：" + downloadTask);
-            downloadQueue.remove(downloadTask);
-            return true ;
-        }
-        return false;
-    }
+
 
     private boolean hasNext(){
         return !downloadQueue.isEmpty();
     }
 
     //实际的下载方式
-    private void download(final DownloadTask downloadObject){
-        Log.i(TAG,"准备下载：filePath =" + downloadObject.getFile_path());
-        //设置下载监听器
-        DownloadListenerImpl.getInstance().setDownloadListener(downloadObject.getDownloadListener());
+    private void startDownload(final DownloadTask downloadTask){
+        Log.i(TAG,String.format("添加下载进程：%s",downloadTask.toString()));
+        Runnable syncRun = new Runnable() {
+            @Override
+            public void run() {
+                Log.i(TAG,"准备下载：" + downloadTask.toString());
+                File file = new File(downloadTask.getFile_path());
+                if(file.exists()){
+                    file.delete();
+                }
 
-        //准备下载文件
-        DownloadListenerImpl.getInstance().onPrepareDownload(downloadObject);
-        RetrofitHelper.getInstance()
-                .getRetrofit()
-                .create(DownloadService.class)
-                .download(downloadObject.getDownload_url())
-                .subscribeOn(Schedulers.io())
-                .observeOn(Schedulers.io())
-                .map(new Function<ResponseBody, InputStream>() {
-                    @Override
-                    public InputStream apply(ResponseBody responseBody) throws Exception {
-                        return responseBody.byteStream();
-                    }
-                })
-                .subscribe(new Consumer<InputStream>() {
-                    @Override
-                    public void accept(InputStream inputStream) throws Exception {
-                        Log.i(TAG,"开始下载文件");
-                        //开始下载文件
-                        DownloadListenerImpl.getInstance().onStartDownLoad();
-                        writeFile(inputStream, downloadObject.getFile_path());
+                //设置下载监听器
+                DownloadListenerImpl.getInstance().setDownloadListener(downloadTask.getDownloadListener());
 
-                        Log.i(TAG,"下载完成");
-                        //下载完成，执行下载完成回调
-                        if(downloadObject.getMd5() != null && downloadObject.getMd5().length() >0){
-                            if(checkMd5(downloadObject.getFile_path(),downloadObject.getMd5())){
-                                DownloadListenerImpl.getInstance().onFinishDownload();
-                            }else{
-                                DownloadListenerImpl.getInstance().onError(new Throwable("MD5 is mismatches"));
+                //准备下载文件
+                DownloadListenerImpl.getInstance().onPrepareDownload(downloadTask);
+
+                RetrofitHelper.getInstance()
+                        .getRetrofit()
+                        .create(DownloadService.class)
+                        .download(downloadTask.getDownload_url())
+                        .map(new Function<ResponseBody, InputStream>() {
+                            @Override
+                            public InputStream apply(ResponseBody responseBody) throws Exception {
+                                return responseBody.byteStream();
                             }
-                        }else {
-                            DownloadListenerImpl.getInstance().onFinishDownload();
-                        }
-                        //移除下载任务
-                        removeDownloadTask(downloadObject);
-                        //从队列移除后的回调
-                        DownloadListenerImpl.getInstance().onRemoveQueue(downloadQueue.size());
-                        //如果全部下载完成，执行完成回调
-                        if(!hasNext()){
-                            DownloadListenerImpl.getInstance().onAllComplete();
-                        }
-                        //移除后下载下一个
-                        download();
-                    }
-                }, new Consumer<Throwable>() {
-                    @Override
-                    public void accept(Throwable throwable) throws Exception {
-                        Log.e(TAG,"下载出错");
-                        //下载出错
-                        DownloadListenerImpl.getInstance().onError(throwable);
-                        //移除下载任务，移除后DownloadListenerImpl.getInstance()中的监听对象会被置空
-                        removeDownloadTask(downloadObject);
-                        //移除下载任务回调
-                        DownloadListenerImpl.getInstance().onRemoveQueue(downloadQueue.size());
-                        //如果全部下载完成，执行完成回调
-                        if(!hasNext()){
-                            DownloadListenerImpl.getInstance().onAllComplete();
-                        }
-                        //移除后下载下一个
-                        download();
-                    }
-                });
+                        })
+                        .subscribe(new Consumer<InputStream>() {
+                            @Override
+                            public void accept(InputStream inputStream) throws Exception {
+                                Log.i(TAG,"开始下载文件");
+                                //开始下载文件
+                                DownloadListenerImpl.getInstance().onStartDownLoad();
+
+                                writeFile(inputStream,downloadTask.getFile_path());
+
+                                Log.i(TAG,"下载完成");
+                                //下载完成，执行下载完成回调
+                                if(downloadTask.getMd5() != null && downloadTask.getMd5().length() >0){
+                                    if(checkMd5(downloadTask.getFile_path(),downloadTask.getMd5())){
+                                        DownloadListenerImpl.getInstance().onFinishDownload();
+                                    }else{
+                                        DownloadListenerImpl.getInstance().onError(new Throwable("MD5 is mismatches"));
+                                    }
+                                }else {
+                                    DownloadListenerImpl.getInstance().onFinishDownload();
+                                }
+                                //移除下载任务
+                                removeDownloadTask(downloadTask);
+
+                            }
+                        }, new Consumer<Throwable>() {
+                            @Override
+                            public void accept(Throwable throwable) throws Exception {
+                                Log.e(TAG,"下载出错");
+                                //下载出错
+                                DownloadListenerImpl.getInstance().onError(throwable);
+                                //移除下载任务，移除后DownloadListenerImpl.getInstance()中的监听对象会被置空
+                                removeDownloadTask(downloadTask);
+
+                            }
+                        });
+            }
+        };
+
+        downloadExecutors.execute(syncRun);
+//        Future future = downloadExecutors.submit(syncRun);
+
     }
 
     //写文件
     private void writeFile(InputStream inputStream,String filePath) throws IOException {
-        File file = new File(filePath);
-        if(file.exists()){
-            file.delete();
-            Log.i(TAG,"文件已存在，删除文件");
-        }
 
         FileOutputStream fileOutputStream = null ;
 
         try {
-            fileOutputStream = new FileOutputStream(file);
+            fileOutputStream = new FileOutputStream(filePath);
 
             byte[] bytes = new byte[1024];
             int length ;

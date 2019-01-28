@@ -13,8 +13,6 @@ import com.wxtoplink.base.camera.interfaces.CameraTemplate;
 import com.wxtoplink.base.camera.utils.CameraUtils;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.security.Permission;
 import java.util.HashMap;
 import java.util.Map;
 

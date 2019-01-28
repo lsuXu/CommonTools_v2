@@ -68,4 +68,14 @@ public class DownloadTask {
         this.md5 = md5;
     }
 
+    @Override
+    public String toString() {
+        return "DownloadTask{" +
+                "download_url='" + download_url + '\'' +
+                ", file_name='" + file_name + '\'' +
+                ", file_path='" + file_path + '\'' +
+                ", md5='" + md5 + '\'' +
+                ", downloadListener=" + downloadListener +
+                '}';
+    }
 }
