@@ -51,14 +51,9 @@ public class CameraTakePhotoImpl extends CameraTemplateImpl implements CameraTak
         return Arrays.asList(new Surface(textureView.getSurfaceTexture()),photoImageReader.getSurface());
     }
 
-
-
     @RequiresPermission(android.Manifest.permission.CAMERA)
     @Override
     public synchronized void startPreview() {
-
-        Size fitSize = getFitPhotoSize();
-        photoImageReader = ImageReader.newInstance(fitSize.getWidth(),fitSize.getHeight(),photoFormat,2);
 
         if(textureView == null){
             throw new NullPointerException("The target canvas is null ,You should call setSurfaceView() before calling startPreview()");
@@ -80,6 +75,15 @@ public class CameraTakePhotoImpl extends CameraTemplateImpl implements CameraTak
             photoImageReader.close();
             photoImageReader = null ;
         }
+        if(textureView != null){
+            textureView = null ;
+        }
+    }
+
+    @Override
+    public void initSurface() {
+        Size fitSize = getFitPhotoSize();
+        photoImageReader = ImageReader.newInstance(fitSize.getWidth(),fitSize.getHeight(),photoFormat,1);
     }
 
 
@@ -162,10 +166,12 @@ public class CameraTakePhotoImpl extends CameraTemplateImpl implements CameraTak
                 if(image != null){
                     if(image.getFormat() == ImageFormat.JPEG) {
                         CameraUtils.saveImage(image, filePath);
+                        image.close();
                     }else if(image.getFormat() == ImageFormat.YUV_420_888){
                         byte [] nv21Byte = ByteDataFormat.formatYUV420_888ToNV21(image);
                         byte [] jpegByte = ByteDataFormat.NV21_2_JPEG(nv21Byte,image.getWidth(),image.getHeight());
                         CameraUtils.saveImage(jpegByte,filePath);
+                        image.close();
                     }else{//直接保存照片的拍照方式仅支持JPEG格式以及YUV_420_888格式，其余格式，调用initTakePhotoImageReader(CapturePhotoCallBack)自行实现
                         image.close();
                         throw new IllegalArgumentException("The takePhoto('String') method supports olay JPEG and YUV_420_888 format " +
@@ -198,6 +204,7 @@ public class CameraTakePhotoImpl extends CameraTemplateImpl implements CameraTak
         @Override
         public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
             startPreview();
+            textureView.setSurfaceTextureListener(null);
         }
 
         @Override
@@ -209,6 +216,7 @@ public class CameraTakePhotoImpl extends CameraTemplateImpl implements CameraTak
         public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
             //若视图被销毁，停止预览
             stopPreview();
+            textureView.setSurfaceTextureListener(null);
             return false;
         }
 

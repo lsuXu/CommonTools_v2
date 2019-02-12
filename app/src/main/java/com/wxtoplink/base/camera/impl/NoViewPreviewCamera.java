@@ -28,9 +28,6 @@ public class NoViewPreviewCamera extends CameraTemplateImpl implements CameraPre
 
     private PreviewDataCallBack previewDataCallBack ;
 
-    private HandlerThread handlerThread ;
-    private Handler handler ;
-
     public NoViewPreviewCamera(Context context) {
         super(context);
         previewFormat = ImageFormat.YUV_420_888;
@@ -39,8 +36,21 @@ public class NoViewPreviewCamera extends CameraTemplateImpl implements CameraPre
     @RequiresPermission(android.Manifest.permission.CAMERA)
     @Override
     public synchronized void startPreview() {
+        openCamera();
+    }
+
+    @Override
+    public synchronized void stopPreview() {
+        super.stopPreview();
+        if(previewImageReader != null){
+            previewImageReader.close();
+            previewImageReader = null ;
+        }
+    }
+
+    @Override
+    public void initSurface() {
         Size fitSize = getPreviewFitSize();
-        startHandleThread();
 
         previewImageReader = ImageReader.newInstance(fitSize.getWidth(),fitSize.getHeight(),previewFormat,2);
 
@@ -53,19 +63,7 @@ public class NoViewPreviewCamera extends CameraTemplateImpl implements CameraPre
                 }
                 image.close();
             }
-        },handler);
-        openCamera();
-    }
-
-    @Override
-    public synchronized void stopPreview() {
-        super.stopPreview();
-        if(previewImageReader != null){
-            previewImageReader.close();
-            previewImageReader = null ;
-        }
-
-        stopHandleThread();
+        },getHandle());
     }
 
 
@@ -86,23 +84,4 @@ public class NoViewPreviewCamera extends CameraTemplateImpl implements CameraPre
         this.previewDataCallBack = previewCallBack ;
     }
 
-    private void startHandleThread(){
-
-        handlerThread = new HandlerThread("imageReaderHandle");
-        handlerThread.start();
-        handler = new Handler(handlerThread.getLooper());
-    }
-
-    private void stopHandleThread() {
-        if(handlerThread != null) {
-            handlerThread.quitSafely();
-            try {
-                handlerThread.join();
-                handlerThread = null;
-                handler = null;
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-    }
 }

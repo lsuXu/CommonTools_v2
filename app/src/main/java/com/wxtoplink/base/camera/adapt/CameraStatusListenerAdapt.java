@@ -6,7 +6,14 @@ import com.wxtoplink.base.camera.interfaces.CameraStatusListener;
  * Created by 12852 on 2019/1/8.
  */
 
-public class CameraStatusListenerAdapt implements CameraStatusListener{
+public abstract class CameraStatusListenerAdapt implements CameraStatusListener{
+
+    public final String TAG ;
+
+    public CameraStatusListenerAdapt() {
+        this.TAG = CameraStatusListenerAdapt.class.getSimpleName();
+    }
+
     @Override
     public void onOpened() {
 
@@ -14,11 +21,6 @@ public class CameraStatusListenerAdapt implements CameraStatusListener{
 
     @Override
     public void onDisconnected() {
-
-    }
-
-    @Override
-    public void onOpenError() {
 
     }
 
@@ -46,4 +48,5 @@ public class CameraStatusListenerAdapt implements CameraStatusListener{
     public void onCaptureFailed() {
 
     }
+
 }

@@ -121,7 +121,7 @@ public class ByteDataFormat {
             };
 
         }else{//像素步伐为2，说明uv尚未分离,uv交错
-            for(int i = 0 ;i < ySize/2;i= i + 2){
+            for(int i = 0 ;i < uSize;i= i + 2){
                 nv21[ySize + i] = vByte[i];
                 nv21[ySize + i + 1] = uByte[i];
             };

@@ -10,8 +10,6 @@ public interface CameraStatusListener {
     void onOpened();
     //相机失去连接
     void onDisconnected();
-    //相机打开失败
-    void onOpenError();
     //相机配置会话成功
     void onConfigured();
     //相机配置会话失败
@@ -22,4 +20,6 @@ public interface CameraStatusListener {
     void onCaptureCompleted();
     //相机图像捕捉失败
     void onCaptureFailed();
+    //相机发生不可预知的错误
+    void onError(Throwable throwable);
 }

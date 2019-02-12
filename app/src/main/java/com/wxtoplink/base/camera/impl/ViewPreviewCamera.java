@@ -37,8 +37,6 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
     private ImageReader previewImageReader ;
     private ImageReader photoImageReader ;
     private TextureView textureView ;
-    private HandlerThread handlerThread ;
-    private Handler handler ;
     private PreviewDataCallBack previewDataCallBack ;
 
     private int photoFormat ;
@@ -48,7 +46,6 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
     public ViewPreviewCamera(Context context) {
         super(context);
         photoFormat = ImageFormat.YUV_420_888 ;//有界面以及预览数据，当前仅支持使用YUV_420_888数据格式
-        startHandleThread();
     }
 
     //初始使用的绘制表面
@@ -66,35 +63,11 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
                 photoImageReader.getSurface());//拍照数据保存
     }
 
-    private void initPreviewImagerReader(){
-        //初始化预览数据回调的imageReader
-        Size fitSize = getPreviewFitSize() ;
-        previewImageReader = ImageReader.newInstance(fitSize.getWidth(),fitSize.getHeight(),previewFormat,2);
-        previewImageReader.setOnImageAvailableListener(new ImageReader.OnImageAvailableListener() {
-            @Override
-            public void onImageAvailable(ImageReader reader) {
-                Image image = previewImageReader.acquireLatestImage();
-                if(image != null){
-                    if(previewDataCallBack != null){
-                        previewDataCallBack.previewData(image);
-                    }
-                    image.close();
-                }
-            }
-        },handler);
-
-        //初始化拍照回调的imageReader,使用JPEG格式，最大支持大小
-        Size photoFitSize = getFitPhotoSize();
-        photoImageReader = ImageReader.newInstance(photoFitSize.getWidth(),photoFitSize.getHeight(),photoFormat,1);
-    }
 
 
     @Override
     @RequiresPermission(android.Manifest.permission.CAMERA)
     public synchronized void startPreview() {
-
-        //初始化imagerReader
-        initPreviewImagerReader();
 
         if(textureView == null){
             throw new NullPointerException("The target canvas is null ,You should call setSurfaceView() before calling startPreview()");
@@ -103,28 +76,8 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
                 //预览界面存在，且当前状态可获取
                 openCamera();
             }else{
-                //预览界面没有准备好，那么设置预览界面的监听器，等它准备好后再重新开始预览
+                //预览界面没有准备好，那么设置预览界面的监听器，等它准备好后开启预览
                 textureView.setSurfaceTextureListener(textureListener);
-            }
-        }
-    }
-
-    private void startHandleThread(){
-
-        handlerThread = new HandlerThread("imageReaderHandle");
-        handlerThread.start();
-        handler = new Handler(handlerThread.getLooper());
-    }
-
-    private void stopHandleThread() {
-        if(handlerThread != null) {
-            handlerThread.quitSafely();
-            try {
-                handlerThread.join();
-                handlerThread = null;
-                handler = null;
-            } catch (InterruptedException e) {
-                e.printStackTrace();
             }
         }
     }
@@ -141,7 +94,31 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
             photoImageReader = null ;
         }
 
-        stopHandleThread();
+    }
+
+    @Override
+    public void initSurface() {
+        //初始化预览数据回调的imageReader
+        Size fitSize = getPreviewFitSize() ;
+        previewImageReader = ImageReader.newInstance(fitSize.getWidth(),fitSize.getHeight(),previewFormat,2);
+        previewImageReader.setOnImageAvailableListener(new ImageReader.OnImageAvailableListener() {
+            @Override
+            public void onImageAvailable(ImageReader reader) {
+                if(previewImageReader != null) {
+                    Image image = previewImageReader.acquireLatestImage();
+                    if (image != null) {
+                        if (previewDataCallBack != null) {
+                            previewDataCallBack.previewData(image);
+                        }
+                        image.close();
+                    }
+                }
+            }
+        },getHandle());
+
+        //初始化拍照回调的imageReader,使用JPEG格式，最大支持大小
+        Size photoFitSize = getFitPhotoSize();
+        photoImageReader = ImageReader.newInstance(photoFitSize.getWidth(),photoFitSize.getHeight(),photoFormat,1);
     }
 
 
@@ -201,13 +178,15 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
                 captureRequestBuilder.set(CaptureRequest.JPEG_ORIENTATION, CameraUtils.getOrientation(context,getCameraId()));
                 //将ImageReader添加到Surface中，用于接收数据
                 captureRequestBuilder.addTarget(photoImageReader.getSurface());
-                try {
-                    if(stopPreview) {//若需要在拍照后停止预览，则在发送拍照请求前应先停止预览，在拍照回调中停止预览会造成死锁问题
-                        cameraCaptureSession.stopRepeating();
+                if(cameraCaptureSession != null) {//相机一旦创建新的会话，原先的会话就会被关闭置空，加入判断
+                    try {
+                        if (stopPreview) {//若需要在拍照后停止预览，则在发送拍照请求前应先停止预览，在拍照回调中停止预览会造成死锁问题
+                            cameraCaptureSession.stopRepeating();
+                        }
+                        cameraCaptureSession.capture(captureRequestBuilder.build(), captureCallback, getHandle());
+                    } catch (CameraAccessException e) {
+                        e.printStackTrace();
                     }
-                    cameraCaptureSession.capture(captureRequestBuilder.build(), captureCallback, null);
-                } catch (CameraAccessException e) {
-                    e.printStackTrace();
                 }
             }
         }
@@ -263,7 +242,7 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
                     image.close();
                 }
             }
-        },handler);
+        },getHandle());
     }
 
     //初始化ImagerReader
@@ -277,7 +256,7 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
                     image.close();
                 }
             }
-        },handler);
+        },getHandle());
     }
 
     @Override

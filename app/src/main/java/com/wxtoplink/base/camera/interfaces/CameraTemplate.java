@@ -24,4 +24,8 @@ public interface CameraTemplate {
 
     boolean isPreview();
 
+    void initSurface();
+
+    void setCameraStatusListener(CameraStatusListener cameraStatusListener);
+
 }
