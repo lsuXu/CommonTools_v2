@@ -24,6 +24,8 @@ import java.util.Map;
 
 public class CameraComponent {
 
+    private static final String TAG = CameraComponent.class.getSimpleName();
+
     private Map<String,CameraTemplate> cameraTemplateMap ;
 
     private CameraComponent(){
@@ -38,6 +40,7 @@ public class CameraComponent {
 
     //设置相机用途，使用相机组件，需要第一个被调用来初始化相机
     public synchronized CameraTemplate getCamera(CameraType cameraType, Context context){
+        CameraLog.i(TAG,String.format("call getCamera('%s')",cameraType.getTypeName()));
         try {
             if(enableCamera(context)) {
                 safeRelease();
@@ -59,6 +62,7 @@ public class CameraComponent {
             }
         } catch (Exception e) {
             e.printStackTrace();
+            CameraLog.e(TAG,"error",e);
         }
 
         return null ;
@@ -83,6 +87,12 @@ public class CameraComponent {
         for(CameraTemplate cameraTemplate : cameraTemplateMap.values()){
             cameraTemplate.stopPreview();
         }
+        Camera2Holder.getInstance().release();
+    }
+
+    public void setLogOutput(CameraLog.LogOperate operate , boolean printf){
+        CameraLog.setPrintf(printf);
+        CameraLog.setLogOperate(operate);
     }
 
     //获取当前正在使用的相机类型

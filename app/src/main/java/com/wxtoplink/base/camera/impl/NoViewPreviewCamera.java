@@ -5,8 +5,6 @@ import android.graphics.ImageFormat;
 
 import android.media.Image;
 import android.media.ImageReader;
-import android.os.Handler;
-import android.os.HandlerThread;
 import android.support.annotation.RequiresPermission;
 import android.util.Size;
 import android.view.Surface;

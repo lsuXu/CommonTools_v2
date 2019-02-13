@@ -13,11 +13,11 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
-import android.util.Log;
 import android.util.Size;
 import android.view.Surface;
 
 import com.wxtoplink.base.camera.Camera2Holder;
+import com.wxtoplink.base.camera.CameraLog;
 import com.wxtoplink.base.camera.interfaces.CameraStatusListener;
 import com.wxtoplink.base.camera.interfaces.CameraTemplate;
 import com.wxtoplink.base.camera.utils.CameraUtils;
@@ -65,6 +65,8 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
 
     @Override
     public void openCamera() {
+        CameraLog.i(TAG,"openCamera()");
+
         if (!isPreview) {
             isPreview = true;
             //打开相机，再CameraDevice.StateCallback回调中监听相机打开状态
@@ -74,7 +76,6 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
                 throw new SecurityException("Manifest.permission.CAMERA not allowed");
             }
             try {
-                Log.i(TAG,"openCamera");
                 //打开相机，在stateCallback中进行下一步
                 Camera2Holder.getInstance().openCamera(context,getCameraId(), stateCallback);
             } catch (CameraAccessException e) {
@@ -104,6 +105,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
     //停止相机预览
     @Override
     public synchronized void stopPreview() {
+        CameraLog.i(TAG,"stopPreview()");
         if(isPreview){
             isPreview = false ;
             if (cameraCaptureSession != null) {
@@ -161,6 +163,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
 
     //创建相机预览会话
     private void createCameraPreviewSession() {
+        CameraLog.i(TAG,"createCameraPreviewSession()");
         if(isPreview) {
             try {
                 //创建新的捕获请求，高帧率优先
@@ -176,7 +179,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
                 cameraDevice.createCaptureSession(getPresetSurfaceList(), captureStateCallback, mBackgroundHandler);
 
             } catch (Exception e) {
-                Log.e(TAG,"createCameraPreviewSession error : " + e.getMessage());
+                CameraLog.e(TAG,"createCameraPreviewSession error : " + e.getMessage());
                 e.printStackTrace();
                 //引发异常情况，停止预览，释放资源，客户端可以通过重新调用摄像头恢复正常
                 stopPreview();
@@ -192,7 +195,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
      * Starts a background thread and its {@link Handler}.
      */
     private void startBackgroundThread() {
-
+        CameraLog.i(TAG,"startBackgroundThread()");
         mBackgroundThread = new HandlerThread("CameraBackground");
         mBackgroundThread.start();
         mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
@@ -203,6 +206,8 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
      * Stops the background thread and its {@link Handler}.
      */
     private void stopBackgroundThread() {
+        CameraLog.i(TAG,"stopBackgroundThread()");
+
         if(mBackgroundThread != null) {
             mBackgroundThread.quitSafely();
             try {
@@ -228,7 +233,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
     private final CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback() {
         @Override
         public void onOpened(@NonNull CameraDevice camera) {
-            Log.i(TAG,"camera opened");
+            CameraLog.i(TAG,"camera opened");
             //相机打开成功
             cameraDevice = camera ;
             if(cameraStatusListener != null){
@@ -240,7 +245,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
 
         @Override
         public void onDisconnected(@NonNull CameraDevice camera) {
-            Log.e(TAG,"camera disconnected");
+            CameraLog.e(TAG,"camera disconnected");
             cameraDevice = null ;
             isPreview = false ;
             if(cameraStatusListener != null){
@@ -250,7 +255,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
 
         @Override
         public void onError(@NonNull CameraDevice camera, int error) {
-            Log.e(TAG,"open camera error:error status =" + error);
+            CameraLog.e(TAG,"open camera error:error status =" + error);
             cameraDevice = null ;
             stopPreview();
             if(cameraStatusListener != null){
@@ -263,12 +268,12 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
     private final CameraCaptureSession.StateCallback captureStateCallback = new CameraCaptureSession.StateCallback() {
         @Override
         public void onConfigured(@NonNull CameraCaptureSession session) {
+            CameraLog.i(TAG, "CameraCaptureSession onConfigured()");
             //若相机失去连接或以关闭
             if(cameraDevice == null) {
                 isPreview = false ;
                 return;
             }
-            Log.e(TAG, "CameraCaptureSession Configure success");
             if(cameraStatusListener != null){
                 cameraStatusListener.onConfigured();
             }
@@ -285,7 +290,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
                     //执行图像捕捉的请求，并在CameraCaptureSession.CaptureCallback中得到回调（ps:ImageRead 的surfaceView获取到的数据在ImageRead的回调中获取）
                     cameraCaptureSession.setRepeatingRequest(captureRequestBuilder.build(), captureCallback, getHandle());
                 } catch (Exception e){
-                    Log.e(TAG, "CameraCaptureSession Configure error:" + e.getMessage());
+                    CameraLog.e(TAG, "CameraCaptureSession Configure error:" + e.getMessage());
                     e.printStackTrace();
                 };
             }
@@ -293,6 +298,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
 
         @Override
         public void onConfigureFailed(@NonNull CameraCaptureSession session) {
+            CameraLog.e(TAG,"CameraCaptureSession onConfigureFailed()");
             //相机配置会话失败
             session.close();
             cameraCaptureSession = null ;
@@ -300,14 +306,13 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
                 cameraStatusListener.onConfigureFailed();
             }
             isPreview = false ;
-            Log.e(TAG,"CameraCaptureSession ConfigureFailed error:error state");
         }
 
         @Override
         public void onClosed(@NonNull CameraCaptureSession session) {
             super.onClosed(session);
+            CameraLog.e(TAG,"CameraCaptureSession onClosed()");
             session.close();
-            Log.e(TAG,"CameraCaptureSession is closed");
         }
     };
 
@@ -332,7 +337,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
 
         @Override
         public void onCaptureFailed(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull CaptureFailure failure) {
-            Log.e(TAG,String.format("onCaptureFailed :failure = %s",failure.getReason()));
+            CameraLog.e(TAG,String.format("onCaptureFailed :failure = %s",failure.getReason()));
 
             if(cameraStatusListener != null){
                 cameraStatusListener.onCaptureFailed();

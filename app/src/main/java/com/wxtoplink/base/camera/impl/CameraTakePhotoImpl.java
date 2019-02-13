@@ -38,7 +38,7 @@ public class CameraTakePhotoImpl extends CameraTemplateImpl implements CameraTak
 
     public CameraTakePhotoImpl(Context context) {
         super(context);
-        photoFormat = ImageFormat.JPEG ;//无界面预览模式，故默认使用JPEG格式进行拍照，还支持YUV_420_888数据格式
+        photoFormat = ImageFormat.JPEG ;//无界面预览模式，默认使用JPEG格式进行拍照，还支持YUV_420_888数据格式
     }
 
     @Override
@@ -179,7 +179,7 @@ public class CameraTakePhotoImpl extends CameraTemplateImpl implements CameraTak
                     }
                 }
             }
-        },null);
+        },getHandle());
     }
 
     //初始化ImagerReader
@@ -193,7 +193,7 @@ public class CameraTakePhotoImpl extends CameraTemplateImpl implements CameraTak
                     image.close();
                 }
             }
-        },null);
+        },getHandle());
     }
 
 

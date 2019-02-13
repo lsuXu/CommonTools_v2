@@ -10,7 +10,6 @@ import android.os.Handler;
 import android.os.HandlerThread;
 import android.support.annotation.NonNull;
 import android.support.annotation.RequiresPermission;
-import android.util.Log;
 
 
 /**
@@ -138,40 +137,41 @@ public final class Camera2Holder {
     private final CameraDevice.StateCallback inStateCallback = new CameraDevice.StateCallback() {
         @Override
         public void onOpened(@NonNull CameraDevice camera) {
+            CameraLog.i(TAG,"CameraDevice onOpened");
             //相机打开成功
             cameraDevice = camera ;
 
             if(outStateCallback != null){
                 outStateCallback.onOpened(cameraDevice);
             }
-            Log.i(TAG,"camera opened");
         }
 
         @Override
         public void onDisconnected(@NonNull CameraDevice camera) {
+            CameraLog.e(TAG,"CameraDevice onDisconnected");
             cameraDevice = null ;
             if(outStateCallback != null){
                 outStateCallback.onDisconnected(camera);
             }
-            Log.e(TAG,"camera disconnected");
         }
 
         @Override
         public void onError(@NonNull CameraDevice camera, int error) {
+            CameraLog.e(TAG,"CameraDevice onError:error state =" + error);
+
             camera.close();
             cameraDevice = null ;
             if(outStateCallback != null){
                 outStateCallback.onError(camera,error);
             }else{
-                Log.e(TAG,"outStateCallback = null");
+                CameraLog.e(TAG,"outStateCallback = null");
             }
-            Log.e(TAG,"open camera error:error state =" + error);
         }
 
         @Override
         public void onClosed(@NonNull CameraDevice camera) {
+            CameraLog.e(TAG,"CameraDevice onClosed");
             super.onClosed(camera);
-            Log.e(TAG,"camera device closed");
         }
     };
 
