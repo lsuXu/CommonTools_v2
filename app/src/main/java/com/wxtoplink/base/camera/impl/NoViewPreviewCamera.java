@@ -34,6 +34,7 @@ public class NoViewPreviewCamera extends CameraTemplateImpl implements CameraPre
     @RequiresPermission(android.Manifest.permission.CAMERA)
     @Override
     public synchronized void startPreview() {
+        setHostHandler();
         openCamera();
     }
 

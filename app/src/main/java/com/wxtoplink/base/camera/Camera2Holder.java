@@ -25,15 +25,11 @@ public final class Camera2Holder {
 
     private CameraDevice cameraDevice;//camera实例，单例存在
 
-    private CameraCaptureSession captureSession ;//captureSession实例，单例存在
-
     private CameraDevice.StateCallback outStateCallback ;//外部引用CameraDevice回调
 
     private HandlerThread cameraHandleThread ;
 
     private Handler cameraHandler ;
-
-    private String cameraId ;
 
     private Camera2Holder() {
     }
@@ -59,8 +55,8 @@ public final class Camera2Holder {
     @SuppressLint("MissingPermission")
     @RequiresPermission(android.Manifest.permission.CAMERA)
     public void preOpenCamera(@NonNull Context context,@NonNull String cameraId) throws CameraAccessException{
+        CameraLog.i(TAG,"preOpenCamera(), init cameraDevice");
         closeCameraDevice();//清除已经打开的Camera实例
-        this.cameraId = cameraId ;//标记当前使用的cameraId
         getCameraManager(context).openCamera(cameraId, inStateCallback, getHandle());
     }
 
@@ -68,7 +64,8 @@ public final class Camera2Holder {
     @SuppressLint("MissingPermission")
     public void openCamera(@NonNull Context context, @NonNull String cameraId, CameraDevice.StateCallback stateCallback) throws CameraAccessException {
         //若当前存在已经打开的相机实例，且方向一致，则直接返回实例
-        if(cameraDevice != null && cameraId.equals(this.cameraId)){
+        if(cameraDevice != null && cameraId.equals(cameraDevice.getId())){
+            CameraLog.i(TAG,"CameraDevice is already init,return " + cameraDevice);
             stateCallback.onOpened(cameraDevice);
         }else{
             outStateCallback = stateCallback ;
@@ -89,16 +86,9 @@ public final class Camera2Holder {
     //关闭已打开的camera实例
     private void closeCameraDevice(){
         if(cameraDevice != null){
+            CameraLog.i(TAG,"closeCameraDevice()");
             cameraDevice.close();
             cameraDevice = null;
-        }
-    }
-
-    //关闭打开的CaptureSession实例
-    private void closeCaptureSession(){
-        if(captureSession != null){
-            captureSession.close();
-            captureSession = null;
         }
     }
 
@@ -124,6 +114,7 @@ public final class Camera2Holder {
                 cameraHandleThread = null;
                 cameraHandler = null;
             } catch (InterruptedException e) {
+                CameraLog.e(TAG,"stopCameraThread() error",e);
                 e.printStackTrace();
             }
         }
@@ -148,7 +139,7 @@ public final class Camera2Holder {
 
         @Override
         public void onDisconnected(@NonNull CameraDevice camera) {
-            CameraLog.e(TAG,"CameraDevice onDisconnected");
+            CameraLog.e(TAG,"CameraDevice onDisconnected()");
             cameraDevice = null ;
             if(outStateCallback != null){
                 outStateCallback.onDisconnected(camera);
@@ -157,10 +148,8 @@ public final class Camera2Holder {
 
         @Override
         public void onError(@NonNull CameraDevice camera, int error) {
-            CameraLog.e(TAG,"CameraDevice onError:error state =" + error);
-
-            camera.close();
-            cameraDevice = null ;
+            CameraLog.e(TAG,"CameraDevice onError():error status =" + error);
+            closeCameraDevice();//发送错误，关闭CameraDevice
             if(outStateCallback != null){
                 outStateCallback.onError(camera,error);
             }else{
@@ -170,7 +159,7 @@ public final class Camera2Holder {
 
         @Override
         public void onClosed(@NonNull CameraDevice camera) {
-            CameraLog.e(TAG,"CameraDevice onClosed");
+            CameraLog.e(TAG,"CameraDevice onClosed()");
             super.onClosed(camera);
         }
     };

@@ -66,6 +66,7 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
     @Override
     @RequiresPermission(android.Manifest.permission.CAMERA)
     public synchronized void startPreview() {
+        setHostHandler();
 
         if(textureView == null){
             throw new NullPointerException("The target canvas is null ,You should call setSurfaceView() before calling startPreview()");

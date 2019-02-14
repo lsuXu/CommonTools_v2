@@ -43,7 +43,7 @@ public class CameraComponent {
         CameraLog.i(TAG,String.format("call getCamera('%s')",cameraType.getTypeName()));
         try {
             if(enableCamera(context)) {
-                safeRelease();
+                stopAllPreview();//停止所有预览
                 CameraTemplate cameraTemplate = null;
                 if (cameraTemplateMap.containsKey(cameraType.getTypeName())) {
                     cameraTemplate = cameraTemplateMap.get(cameraType.getTypeName());
@@ -62,7 +62,7 @@ public class CameraComponent {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            CameraLog.e(TAG,"error",e);
+            CameraLog.e(TAG,"getCamera() error",e);
         }
 
         return null ;
@@ -82,14 +82,19 @@ public class CameraComponent {
         }
     }
 
-    //释放相机资源
-    public synchronized void safeRelease(){
+    public synchronized void stopAllPreview(){
         for(CameraTemplate cameraTemplate : cameraTemplateMap.values()){
             cameraTemplate.stopPreview();
         }
+    }
+
+    //释放相机资源
+    public synchronized void safeRelease(){
+        stopAllPreview();//停止所有预览
         Camera2Holder.getInstance().release();
     }
 
+    //设置log日志处理方式
     public void setLogOutput(CameraLog.LogOperate operate , boolean printf){
         CameraLog.setPrintf(printf);
         CameraLog.setLogOperate(operate);

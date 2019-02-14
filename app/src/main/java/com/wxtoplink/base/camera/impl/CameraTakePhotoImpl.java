@@ -54,6 +54,7 @@ public class CameraTakePhotoImpl extends CameraTemplateImpl implements CameraTak
     @RequiresPermission(android.Manifest.permission.CAMERA)
     @Override
     public synchronized void startPreview() {
+        setHostHandler();
 
         if(textureView == null){
             throw new NullPointerException("The target canvas is null ,You should call setSurfaceView() before calling startPreview()");

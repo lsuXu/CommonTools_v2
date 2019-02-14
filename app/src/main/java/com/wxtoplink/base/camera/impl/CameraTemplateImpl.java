@@ -11,6 +11,7 @@ import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.TotalCaptureResult;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.util.Size;
@@ -32,9 +33,10 @@ import java.util.List;
 
 public abstract class CameraTemplateImpl implements CameraTemplate {
 
-    private static final String TAG = CameraTemplateImpl.class.getSimpleName();
+    private final String TAG ;
 
     CameraTemplateImpl(Context context) {
+        TAG = CameraTemplateImpl.this.getClass().toString() ;
         this.context = context;
     }
 
@@ -62,6 +64,8 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
     private Handler mBackgroundHandler;
 
     private CameraStatusListener cameraStatusListener = null;
+
+    private Handler hostHandler ;
 
     @Override
     public void openCamera() {
@@ -122,6 +126,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
             if (cameraDevice != null) {//CameraDevice的创建以及销毁由Camera2holder完成，这里仅需要释放对CameraDevice的引用
                 cameraDevice = null;
             }
+            hostHandler = null;
             stopBackgroundThread();
         }
     }
@@ -178,13 +183,18 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
                 //CameraDevice创建一个会话请求，再指定SurfaceView中进行绘制，再CameraCaptureSession.StateCallback中监听创建请求的结果并做相应配置
                 cameraDevice.createCaptureSession(getPresetSurfaceList(), captureStateCallback, mBackgroundHandler);
 
-            } catch (Exception e) {
+            } catch (final Exception e) {
                 CameraLog.e(TAG,"createCameraPreviewSession error : " + e.getMessage());
                 e.printStackTrace();
-                //引发异常情况，停止预览，释放资源，客户端可以通过重新调用摄像头恢复正常
-                stopPreview();
+                //引发异常情况，客户端可以通过释放相机资源后重启
                 if(cameraStatusListener != null){
-                    cameraStatusListener.onError(e);
+                    executeToHostThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if(cameraStatusListener != null)
+                                cameraStatusListener.onError(e);
+                        }
+                    });
                 }
             }
         }
@@ -237,7 +247,13 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
             //相机打开成功
             cameraDevice = camera ;
             if(cameraStatusListener != null){
-                cameraStatusListener.onOpened();
+                executeToHostThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if(cameraStatusListener != null)
+                            cameraStatusListener.onOpened();
+                    }
+                });
             }
             //创建相机预览会话
             createCameraPreviewSession();
@@ -249,17 +265,27 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
             cameraDevice = null ;
             isPreview = false ;
             if(cameraStatusListener != null){
-                cameraStatusListener.onDisconnected();
+                executeToHostThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if(cameraStatusListener != null)
+                            cameraStatusListener.onDisconnected();
+                    }
+                });
             }
         }
 
         @Override
-        public void onError(@NonNull CameraDevice camera, int error) {
+        public void onError(@NonNull CameraDevice camera,final int error) {
             CameraLog.e(TAG,"open camera error:error status =" + error);
-            cameraDevice = null ;
-            stopPreview();
             if(cameraStatusListener != null){
-                cameraStatusListener.onError(new Throwable("open camera error: status = " + error));
+                executeToHostThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if(cameraStatusListener != null)
+                            cameraStatusListener.onError(new Throwable("open camera error: status = " + error));
+                    }
+                });
             }
         }
     };
@@ -275,7 +301,13 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
                 return;
             }
             if(cameraStatusListener != null){
-                cameraStatusListener.onConfigured();
+                executeToHostThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if(cameraStatusListener != null)
+                            cameraStatusListener.onConfigured();
+                    }
+                });
             }
             //创建成功的CameraCaptureSession
             cameraCaptureSession = session ;
@@ -303,7 +335,13 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
             session.close();
             cameraCaptureSession = null ;
             if(cameraStatusListener != null){
-                cameraStatusListener.onConfigureFailed();
+                executeToHostThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if(cameraStatusListener != null)
+                            cameraStatusListener.onConfigureFailed();
+                    }
+                });
             }
             isPreview = false ;
         }
@@ -322,7 +360,13 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
         @Override
         public void onCaptureStarted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, long timestamp, long frameNumber) {
             if(cameraStatusListener != null){
-                cameraStatusListener.onCaptureStarted();
+                executeToHostThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if(cameraStatusListener != null)
+                            cameraStatusListener.onCaptureStarted();
+                    }
+                });
             }
             super.onCaptureStarted(session, request, timestamp, frameNumber);
         }
@@ -330,7 +374,13 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
         @Override
         public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
             if(cameraStatusListener != null){
-                cameraStatusListener.onCaptureCompleted();
+                executeToHostThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if(cameraStatusListener != null)
+                            cameraStatusListener.onCaptureCompleted();
+                    }
+                });
             }
             super.onCaptureCompleted(session, request, result);
         }
@@ -340,9 +390,21 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
             CameraLog.e(TAG,String.format("onCaptureFailed :failure = %s",failure.getReason()));
 
             if(cameraStatusListener != null){
-                cameraStatusListener.onCaptureFailed();
+                executeToHostThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if(cameraStatusListener != null)
+                            cameraStatusListener.onCaptureFailed();
+                    }
+                });
                 if(failure.getReason() == CaptureFailure.REASON_ERROR){//由于内部错误引起捕获失败，则关闭预览，触发错误回调
-                    cameraStatusListener.onError(new Throwable("The CaptureResult has been dropped this frame due to an error in the framework"));
+                    executeToHostThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if(cameraStatusListener != null)
+                                cameraStatusListener.onError(new Throwable("The CaptureResult has been dropped this frame due to an error in the framework"));
+                        }
+                    });
                 }
             }
             super.onCaptureFailed(session, request, failure);
@@ -353,6 +415,21 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
     @Override
     public void setCameraStatusListener(CameraStatusListener cameraStatusListener) {
         this.cameraStatusListener = cameraStatusListener ;
+    }
+
+    //获取宿主线层的Looper
+    void setHostHandler(){
+        if(Looper.myLooper() != null) {
+            hostHandler = new Handler(Looper.myLooper());
+        }else{
+            hostHandler = new Handler(Looper.getMainLooper());
+        }
+    }
+
+    void executeToHostThread(Runnable runnable){
+        if(hostHandler != null) {
+            hostHandler.post(runnable);
+        }
     }
 
 }
