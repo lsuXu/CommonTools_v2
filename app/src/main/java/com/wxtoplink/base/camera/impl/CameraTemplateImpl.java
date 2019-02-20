@@ -114,12 +114,15 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
             isPreview = false ;
             if (cameraCaptureSession != null) {
                 synchronized (cameraCaptureSession) {
-                    try {
-                        cameraCaptureSession.abortCaptures();
-                    } catch (CameraAccessException e) {
-                        e.printStackTrace();
+                    if(cameraDevice != null) {//若CameraDevice已经关闭，
+                        try {
+                            cameraCaptureSession.abortCaptures();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            CameraLog.e(TAG,"stopPreview() error",e);
+                        }
+                        cameraCaptureSession.close();
                     }
-                    cameraCaptureSession.close();
                     cameraCaptureSession = null;
                 }
             }
@@ -169,7 +172,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
     //创建相机预览会话
     private void createCameraPreviewSession() {
         CameraLog.i(TAG,"createCameraPreviewSession()");
-        if(isPreview) {
+        if(isPreview && cameraDevice != null) {
             try {
                 //创建新的捕获请求，高帧率优先
                 captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
@@ -180,11 +183,15 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
                 for(Surface surface: getPreviewSurfaceList()){
                     captureRequestBuilder.addTarget(surface);
                 }
-                //CameraDevice创建一个会话请求，再指定SurfaceView中进行绘制，再CameraCaptureSession.StateCallback中监听创建请求的结果并做相应配置
-                cameraDevice.createCaptureSession(getPresetSurfaceList(), captureStateCallback, mBackgroundHandler);
+                if(cameraDevice != null) {//若使用途中发生错误，cameraDevice会被置空
+                    //CameraDevice创建一个会话请求，再指定SurfaceView中进行绘制，再CameraCaptureSession.StateCallback中监听创建请求的结果并做相应配置
+                    cameraDevice.createCaptureSession(getPresetSurfaceList(), captureStateCallback, mBackgroundHandler);
+                }else{
+                    isPreview = false ;
+                }
 
             } catch (final Exception e) {
-                CameraLog.e(TAG,"createCameraPreviewSession error : " + e.getMessage());
+                CameraLog.e(TAG,"createCameraPreviewSession error",e);
                 e.printStackTrace();
                 //引发异常情况，客户端可以通过释放相机资源后重启
                 if(cameraStatusListener != null){
@@ -197,6 +204,8 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
                     });
                 }
             }
+        }else{//非正在预览状态，或者CameraDevice已经被关闭
+            isPreview = false ;
         }
     }
 
@@ -278,6 +287,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
         @Override
         public void onError(@NonNull CameraDevice camera,final int error) {
             CameraLog.e(TAG,"open camera error:error status =" + error);
+            cameraDevice = null ;
             if(cameraStatusListener != null){
                 executeToHostThread(new Runnable() {
                     @Override
@@ -322,7 +332,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
                     //执行图像捕捉的请求，并在CameraCaptureSession.CaptureCallback中得到回调（ps:ImageRead 的surfaceView获取到的数据在ImageRead的回调中获取）
                     cameraCaptureSession.setRepeatingRequest(captureRequestBuilder.build(), captureCallback, getHandle());
                 } catch (Exception e){
-                    CameraLog.e(TAG, "CameraCaptureSession Configure error:" + e.getMessage());
+                    CameraLog.e(TAG, "CameraCaptureSession Configure error",e);
                     e.printStackTrace();
                 };
             }

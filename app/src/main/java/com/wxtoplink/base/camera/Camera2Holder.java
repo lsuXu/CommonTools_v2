@@ -140,6 +140,7 @@ public final class Camera2Holder {
         @Override
         public void onDisconnected(@NonNull CameraDevice camera) {
             CameraLog.e(TAG,"CameraDevice onDisconnected()");
+            camera.close();
             cameraDevice = null ;
             if(outStateCallback != null){
                 outStateCallback.onDisconnected(camera);
