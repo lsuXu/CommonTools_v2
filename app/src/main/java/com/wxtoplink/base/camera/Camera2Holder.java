@@ -23,7 +23,7 @@ public final class Camera2Holder {
 
     private CameraManager cameraManager;//camera管理器
 
-    private CameraDevice cameraDevice;//camera实例，单例存在
+    private static CameraDevice cameraDevice = null;//camera实例，单例存在
 
     private CameraDevice.StateCallback outStateCallback ;//外部引用CameraDevice回调
 
@@ -63,12 +63,12 @@ public final class Camera2Holder {
     //打开相机，优先使用缓存，提高camera转换效率
     @SuppressLint("MissingPermission")
     public void openCamera(@NonNull Context context, @NonNull String cameraId, CameraDevice.StateCallback stateCallback) throws CameraAccessException {
+        outStateCallback = stateCallback ;
         //若当前存在已经打开的相机实例，且方向一致，则直接返回实例
         if(cameraDevice != null && cameraId.equals(cameraDevice.getId())){
             CameraLog.i(TAG,"CameraDevice is already init,return " + cameraDevice);
             stateCallback.onOpened(cameraDevice);
         }else{
-            outStateCallback = stateCallback ;
             preOpenCamera(context,cameraId);
         }
     }
