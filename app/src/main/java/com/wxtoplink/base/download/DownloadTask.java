@@ -16,6 +16,8 @@ public class DownloadTask {
     private String file_path ;
     //hash值,选填
     private String md5 ;
+    //下载状态(0:排队，1:下载队列中，2:正在下载:3)
+    private int status ;
     //下载文件的监听器
     private DownloadListener downloadListener ;
 
@@ -26,6 +28,7 @@ public class DownloadTask {
         this.file_path = file_path;
         this.md5 = md5;
         this.downloadListener = downloadListener;
+        this.status = Status.ORIGINAL.getId();
     }
 
     public String getDownload_url() {
@@ -52,6 +55,14 @@ public class DownloadTask {
         this.file_path = file_path;
     }
 
+    public int getStatus() {
+        return status;
+    }
+
+    public void setStatus(Status status) {
+        this.status = status.getId();
+    }
+
     public DownloadListener getDownloadListener() {
         return downloadListener;
     }
@@ -75,6 +86,7 @@ public class DownloadTask {
                 ", file_name='" + file_name + '\'' +
                 ", file_path='" + file_path + '\'' +
                 ", md5='" + md5 + '\'' +
+                ", status=" + status +
                 ", downloadListener=" + downloadListener +
                 '}';
     }

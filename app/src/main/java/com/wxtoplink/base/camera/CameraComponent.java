@@ -11,6 +11,9 @@ import com.wxtoplink.base.camera.impl.CameraTakePhotoImpl;
 import com.wxtoplink.base.camera.impl.ViewPreviewCamera;
 import com.wxtoplink.base.camera.interfaces.CameraTemplate;
 import com.wxtoplink.base.camera.utils.CameraUtils;
+import com.wxtoplink.base.log.CameraLog;
+import com.wxtoplink.base.log.LogOperate;
+import com.wxtoplink.base.log.LogOutput;
 
 import java.lang.reflect.Constructor;
 import java.util.HashMap;
@@ -22,7 +25,7 @@ import java.util.Map;
  * Created by 12852 on 2018/8/29.
  */
 
-public class CameraComponent {
+public class CameraComponent implements LogOutput{
 
     private static final String TAG = CameraComponent.class.getSimpleName();
 
@@ -40,7 +43,7 @@ public class CameraComponent {
 
     //设置相机用途，使用相机组件，需要第一个被调用来初始化相机
     public synchronized CameraTemplate getCamera(CameraType cameraType, Context context){
-        CameraLog.i(TAG,String.format("call getCamera('%s')",cameraType.getTypeName()));
+        CameraLog.getInstance().i(TAG,String.format("call getCamera('%s')",cameraType.getTypeName()));
         try {
             if(enableCamera(context)) {
                 stopAllPreview();//停止所有预览
@@ -62,7 +65,7 @@ public class CameraComponent {
             }
         } catch (Exception e) {
             e.printStackTrace();
-            CameraLog.e(TAG,"getCamera() error",e);
+            CameraLog.getInstance().e(TAG,"getCamera() error",e);
         }
 
         return null ;
@@ -82,6 +85,7 @@ public class CameraComponent {
         }
     }
 
+    //停止所有预览
     public synchronized void stopAllPreview(){
         for(CameraTemplate cameraTemplate : cameraTemplateMap.values()){
             cameraTemplate.stopPreview();
@@ -94,11 +98,6 @@ public class CameraComponent {
         Camera2Holder.getInstance().release();
     }
 
-    //设置log日志处理方式
-    public void setLogOutput(CameraLog.LogOperate operate , boolean printf){
-        CameraLog.setPrintf(printf);
-        CameraLog.setLogOperate(operate);
-    }
 
     //获取当前正在使用的相机类型
     public CameraType getCurrentCameraType() {
@@ -112,6 +111,13 @@ public class CameraComponent {
             isPreview = isPreview || cameraTemplate.isPreview();
         }
         return isPreview ;
+    }
+
+    //设置日志输出
+    @Override
+    public void setLogOutput(LogOperate operate, boolean printf) {
+        CameraLog.getInstance().setPrintf(printf);
+        CameraLog.getInstance().setLogOperate(operate);
     }
 
 
@@ -131,7 +137,7 @@ public class CameraComponent {
         public Class getTargetClass(){
             return targetClass ;
         }
-        private CameraType(Class c,String typeName){
+        CameraType(Class c,String typeName){
             this.targetClass = c ;
             this.typeName = typeName ;
         }

@@ -3,13 +3,15 @@ package com.wxtoplink.base.camera;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.hardware.camera2.CameraAccessException;
-import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.support.annotation.NonNull;
 import android.support.annotation.RequiresPermission;
+
+import com.wxtoplink.base.log.AbstractLog;
+import com.wxtoplink.base.log.CameraLog;
 
 
 /**
@@ -31,7 +33,10 @@ public final class Camera2Holder {
 
     private Handler cameraHandler ;
 
+    private AbstractLog logInstance ;
+
     private Camera2Holder() {
+        logInstance = CameraLog.getInstance();
     }
 
     public static Camera2Holder getInstance() {
@@ -55,7 +60,7 @@ public final class Camera2Holder {
     @SuppressLint("MissingPermission")
     @RequiresPermission(android.Manifest.permission.CAMERA)
     public void preOpenCamera(@NonNull Context context,@NonNull String cameraId) throws CameraAccessException{
-        CameraLog.i(TAG,"preOpenCamera(), init cameraDevice");
+        logInstance.i(TAG,"preOpenCamera(), init cameraDevice");
         closeCameraDevice();//清除已经打开的Camera实例
         getCameraManager(context).openCamera(cameraId, inStateCallback, getHandle());
     }
@@ -66,7 +71,7 @@ public final class Camera2Holder {
         outStateCallback = stateCallback ;
         //若当前存在已经打开的相机实例，且方向一致，则直接返回实例
         if(cameraDevice != null && cameraId.equals(cameraDevice.getId())){
-            CameraLog.i(TAG,"CameraDevice is already init,return " + cameraDevice);
+            logInstance.i(TAG,"CameraDevice is already init,return " + cameraDevice);
             stateCallback.onOpened(cameraDevice);
         }else{
             preOpenCamera(context,cameraId);
@@ -86,7 +91,7 @@ public final class Camera2Holder {
     //关闭已打开的camera实例
     private void closeCameraDevice(){
         if(cameraDevice != null){
-            CameraLog.i(TAG,"closeCameraDevice()");
+            logInstance.i(TAG,"closeCameraDevice()");
             cameraDevice.close();
             cameraDevice = null;
         }
@@ -114,7 +119,7 @@ public final class Camera2Holder {
                 cameraHandleThread = null;
                 cameraHandler = null;
             } catch (InterruptedException e) {
-                CameraLog.e(TAG,"stopCameraThread() error",e);
+                logInstance.e(TAG,"stopCameraThread() error",e);
                 e.printStackTrace();
             }
         }
@@ -128,7 +133,7 @@ public final class Camera2Holder {
     private final CameraDevice.StateCallback inStateCallback = new CameraDevice.StateCallback() {
         @Override
         public void onOpened(@NonNull CameraDevice camera) {
-            CameraLog.i(TAG,"CameraDevice onOpened");
+            logInstance.i(TAG,"CameraDevice onOpened");
             //相机打开成功
             cameraDevice = camera ;
 
@@ -139,7 +144,7 @@ public final class Camera2Holder {
 
         @Override
         public void onDisconnected(@NonNull CameraDevice camera) {
-            CameraLog.e(TAG,"CameraDevice onDisconnected()");
+            logInstance.e(TAG,"CameraDevice onDisconnected()");
             camera.close();
             cameraDevice = null ;
             if(outStateCallback != null){
@@ -149,18 +154,18 @@ public final class Camera2Holder {
 
         @Override
         public void onError(@NonNull CameraDevice camera, int error) {
-            CameraLog.e(TAG,"CameraDevice onError():error status =" + error);
+            logInstance.e(TAG,"CameraDevice onError():error status =" + error);
             closeCameraDevice();//发送错误，关闭CameraDevice
             if(outStateCallback != null){
                 outStateCallback.onError(camera,error);
             }else{
-                CameraLog.e(TAG,"outStateCallback = null");
+                logInstance.e(TAG,"outStateCallback = null");
             }
         }
 
         @Override
         public void onClosed(@NonNull CameraDevice camera) {
-            CameraLog.e(TAG,"CameraDevice onClosed()");
+            logInstance.e(TAG,"CameraDevice onClosed()");
             super.onClosed(camera);
         }
     };

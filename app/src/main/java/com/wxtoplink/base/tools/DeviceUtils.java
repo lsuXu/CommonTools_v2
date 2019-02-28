@@ -52,7 +52,7 @@ public class DeviceUtils {
                                 stringBuilder.append(String.format("%02X:",b));
                             }
                             stringBuilder.deleteCharAt(stringBuilder.length()-1);
-                            Log.i(TAG,"mac ：" + stringBuilder.toString());
+                            Log.i(TAG,"mac :" + stringBuilder.toString());
                             return stringBuilder.toString();
                         }
                     }

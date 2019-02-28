@@ -1,7 +1,10 @@
 package com.wxtoplink.base.linux;
 
 import android.os.Environment;
-import android.util.Log;
+
+import com.wxtoplink.base.log.LinuxLog;
+import com.wxtoplink.base.log.LogOperate;
+import com.wxtoplink.base.log.LogOutput;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,7 +20,7 @@ import io.reactivex.schedulers.Schedulers;
  * Created by 12852 on 2018/8/1.
  */
 
-public class ShellManager {
+public final class ShellManager implements LogOutput{
 
     private static final String TAG = ShellManager.class.getSimpleName();
 
@@ -58,7 +61,6 @@ public class ShellManager {
                         @Override
                         public void accept(Long aLong) throws Exception {
                             existTime ++ ;
-                            Log.i(TAG,"==============================existTime =" + existTime);
                             //进程为null,关闭定时器
                             if(shellProcess == null){
                                 timeDisposable.dispose();
@@ -69,6 +71,7 @@ public class ShellManager {
                                 timeDisposable.dispose();
                                 timeDisposable = null ;
                             }else if(existTime >= 5){
+                                LinuxLog.getInstance().i(TAG,"shellProcess release");
                                 //超过十分钟未被调用，正常退出进程
                                 shellProcess.release();
                             }
@@ -77,12 +80,17 @@ public class ShellManager {
         }
 
         if(shellProcess == null || shellProcess.isClose()){
+            LinuxLog.getInstance().i(TAG,"创建linux进程");
             //创建一个新的Linux窗口进程
             shellProcess = new ShellProcess(processBuilder.start());
-            Log.i(TAG,"创建进程");
         }
 
         return shellProcess ;
     }
 
+    @Override
+    public void setLogOutput(LogOperate operate, boolean printf) {
+        LinuxLog.getInstance().setLogOperate(operate);
+        LinuxLog.getInstance().setPrintf(printf);
+    }
 }

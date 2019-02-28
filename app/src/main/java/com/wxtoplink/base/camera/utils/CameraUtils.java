@@ -14,7 +14,7 @@ import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.Surface;
 
-import com.wxtoplink.base.camera.CameraLog;
+import com.wxtoplink.base.log.CameraLog;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -78,7 +78,7 @@ public class CameraUtils {
         }
 
         for(Size size : sizeList ){
-            CameraLog.i("mat","size :{ height =" + size.getHeight() + " ,width =" + size.getWidth() + " };");
+            CameraLog.getInstance().i(TAG,"size :{ height =" + size.getHeight() + " ,width =" + size.getWidth() + " };");
             if(size.getWidth()*size.getHeight()<=maxSize.getHeight()*maxSize.getWidth()){
                 return size ;
             }
@@ -90,7 +90,7 @@ public class CameraUtils {
     //获取相机预览界面的翻转角度，用于纠正相机预览的方向
     public static int getOrientation(@NonNull Context context,@NonNull String cameraId){
         if(!(context instanceof Activity)){
-            CameraLog.i(TAG,"getOrientation() methods returns 0");
+            CameraLog.getInstance().i(TAG,"getOrientation() methods returns 0");
             return 0;
         };
         try {
@@ -109,7 +109,7 @@ public class CameraUtils {
             //获取摄像机传感器的定位
             int mSensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
             int orientation = (ORIENTATIONS.get(rotation) +mSensorOrientation + 270 )%360;
-            CameraLog.i(TAG,"getOrientation() methods returns " + orientation);
+            CameraLog.getInstance().i(TAG,"getOrientation() methods returns " + orientation);
             return orientation ;
         } catch (CameraAccessException e) {
             e.printStackTrace();

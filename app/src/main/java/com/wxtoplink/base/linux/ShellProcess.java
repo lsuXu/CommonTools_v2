@@ -1,6 +1,7 @@
 package com.wxtoplink.base.linux;
 
-import android.util.Log;
+import com.wxtoplink.base.log.AbstractLog;
+import com.wxtoplink.base.log.LinuxLog;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -15,8 +16,12 @@ import java.util.Vector;
 public class ShellProcess {
 
     private static final String TAG = ShellProcess.class.getSimpleName();
+
+    private AbstractLog logInstance ;
+
     public ShellProcess(Process process) {
         this.process = process;
+        logInstance = LinuxLog.getInstance();
         initEnvironment();
     }
 
@@ -67,7 +72,7 @@ public class ShellProcess {
                 e.printStackTrace();
             }
         }else{
-            Log.e(TAG,"ShellManager is already init");
+            logInstance.e(TAG,"ShellManager is already init");
         }
     }
 
@@ -83,7 +88,7 @@ public class ShellProcess {
 
     //执行linux命令
     public synchronized void execute(String linuxCommand,ExecuteCallback callback){
-        Log.i(TAG,"-----------------execute start:" + Thread.currentThread().getName());
+        logInstance.i(TAG,String.format("execute command ' %s ' on thread %s",linuxCommand,Thread.currentThread().getId()));
 
         if(!isInit){
             //若未初始化，先初始化
@@ -107,15 +112,17 @@ public class ShellProcess {
 
         @Override
         public void run() {
-            Log.i(TAG,"----------------outputRunnable is running:"+ Thread.currentThread().getName());
+            logInstance.i(TAG,"outputRunnable is running:"+ Thread.currentThread().getName());
             int count ;
             char[] chars = new char[1024];
             try {
                 //resultBuffer会长时间阻塞读取返回结果，直到执行exit后，关闭
                 while ((count = resultBuffer.read(chars)) > -1){
 
+                    String result = String.format("\n^%s^\n%s",requestCount++,new String(chars,0,count));
+                    logInstance.i(TAG,"execute result :" + result);
                     //添加结果
-                    callback.executeResult(String.format("\n^%s^\n%s",requestCount++,new String(chars,0,count)));
+                    callback.executeResult(result);
                     //延时
                     Thread.sleep(1000);
                     //若进程已经结束，正常结束
@@ -124,10 +131,10 @@ public class ShellProcess {
                     }
                 }
 
-                Log.i(TAG,"--------------------outputRunnable is finish");
+                logInstance.i(TAG,"outputRunnable is finish");
 
             }catch (Exception e){
-                Log.e(TAG,"-------------------error:" + e.getMessage());
+                logInstance.e(TAG,"error", e);
             }finally {
                 try {
                     //关闭输出流
@@ -135,7 +142,7 @@ public class ShellProcess {
                     isClose = true ;
                 } catch (IOException e) {
                     e.printStackTrace();
-                    Log.e(TAG,"--------------close bufferedReader error:" + e.getMessage());
+                    logInstance.e(TAG,"close bufferedReader error",e);
                 }
             }
         }
@@ -146,7 +153,7 @@ public class ShellProcess {
         @Override
         public void run() {
             try {
-                Log.i(TAG,"---------------inputRunnable is running:" + Thread.currentThread().getName());
+                logInstance.i(TAG,"inputRunnable is running:" + Thread.currentThread().getName());
 
                 while(true) {
                     //存在待执行的Linux命令，即写入命令
@@ -154,10 +161,9 @@ public class ShellProcess {
                         for(String command : linuxCommands){
                             //如果outputStream已关闭，会抛出IO异常，此时线层正常结束(可以由“exit”命令触发)
                             if (outputStream != null) {
-                                Log.i(TAG, "-------------------inputRunnable write command:" + command);
+                                logInstance.i(TAG, "inputRunnable write command:" + command);
                                 outputStream.write(command.getBytes());
                             }
-                            Log.i(TAG,linuxCommands.size() + " ");
                         }
                         outputStream.flush();
                         linuxCommands.clear();
@@ -171,16 +177,16 @@ public class ShellProcess {
                 }
 
             }catch (Exception e){
-                Log.e(TAG,"--------------input error:" + e.getMessage());
+                logInstance.e(TAG,"input error",e);
             }finally {
                 try {
                     outputStream.close();
                     linuxCommands.clear();
                     isClose = true ;
-                    Log.i(TAG,"--------------close outputStream :" + linuxCommands.capacity());
+                    logInstance.i(TAG,"close outputStream :" + linuxCommands.capacity());
                 } catch (IOException e) {
                     e.printStackTrace();
-                    Log.e(TAG,"--------------close outputStream error:" + e.getMessage());
+                    logInstance.e(TAG,"close outputStream error", e);
                 }
             }
         }

@@ -1,15 +1,14 @@
 package com.wxtoplink.base.download;
 
-import android.util.Log;
-
 import com.wxtoplink.base.download.listener.DownloadListener;
 import com.wxtoplink.base.download.listener.DownloadListenerImpl;
-import com.wxtoplink.base.tools.EncryptionCheckUtil;
+import com.wxtoplink.base.download.utils.DownloadUtil;
+import com.wxtoplink.base.log.AbstractLog;
+import com.wxtoplink.base.log.DownloadLog;
+import com.wxtoplink.base.log.LogOperate;
+import com.wxtoplink.base.log.LogOutput;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,11 +24,12 @@ import okhttp3.ResponseBody;
  * Created by 12852 on 2018/7/24.
  */
 
-public class DownloadManager {
+public final class DownloadManager implements LogOutput{
 
-    private static final String TAG = DownloadManager.class.getSimpleName();
+    private final AbstractLog logInstance ;
 
-    private static final DownloadManager instance = new DownloadManager();
+    private final String TAG ;
+
     //下载队列
     private List<DownloadTask> downloadQueue ;
 
@@ -41,13 +41,15 @@ public class DownloadManager {
 
 
     public static DownloadManager getInstance (){
-        return instance;
+        return DownloadManagerHolder.instance;
     };
 
     private DownloadManager(){
+        TAG = DownloadManager.class.getSimpleName();
         downloadQueue = new ArrayList<>();
         downloadExecutors = Executors.newSingleThreadExecutor();
         waitExecutor = Executors.newSingleThreadExecutor();
+        logInstance = DownloadLog.getInstance();
     }
 
     //添加下载任务
@@ -79,17 +81,17 @@ public class DownloadManager {
         return downloadQueue;
     }
 
-    //下载第一步：当下载队列发生改变时执行，判断当前下载状况，决定是否进行文件下载
+    //下载第一步:当下载队列发生改变时执行，判断当前下载状况，决定是否进行文件下载
     private void download(){
-
         if(!downloadQueue.isEmpty() && !DownloadListenerImpl.getInstance().isDownloading()){
-            startDownload(downloadQueue.get(0));
-        }else if(DownloadListenerImpl.getInstance().isDownloading()){
-
-        }else{
-            Log.i(TAG,"任务已经全部下载完成");
+            for(DownloadTask downloadTask: downloadQueue){
+                if(downloadTask.getStatus() == Status.ORIGINAL.getId()){//查找初始状态的任务，进行下载
+                    downloadTask.setStatus(Status.PREPARE);//修改任务状态，避免重复添加到下载队列中
+                    startDownload(downloadTask);
+                    break;
+                }
+            }
         }
-
     }
 
     //添加下载任务
@@ -99,15 +101,16 @@ public class DownloadManager {
             public void run() {
                 //下载队列为空或者下载队列中不包含当前任务,添加下载任务
                 if(!noRepeat || downloadQueue.isEmpty()){
-                    Log.i(TAG,"添加下载任务：hashCode =" + downloadTask.hashCode() + "  ;地址：" + downloadTask);
+                    logInstance.i(TAG,"Add tasks to wait queue:downloadTask =" + downloadTask.toString());
                     downloadQueue.add(downloadTask);
                     download();
                 }else if(!isContains(downloadTask)){
-                    Log.i(TAG,"添加下载任务：hashCode =" + downloadTask.hashCode() + "  ;地址：" + downloadTask);
+                    logInstance.i(TAG,"Add tasks to wait queue:downloadTask =" + downloadTask.toString());
                     downloadQueue.add(downloadTask);
                     download();
+                }else {
+                    logInstance.i(TAG, "The task already exists:" + downloadTask.toString());
                 }
-                Log.i(TAG,"任务已存在：" + downloadTask);
             }
         });
     };
@@ -118,7 +121,7 @@ public class DownloadManager {
             @Override
             public void run() {
                 if(downloadQueue.contains(downloadTask)){
-                    Log.i(TAG,"删除下载任务：" + downloadTask.toString());
+                    logInstance.i(TAG,"Delete task:" + downloadTask.toString());
                     downloadQueue.remove(downloadTask);
                 }
                 //移除下载任务回调
@@ -148,18 +151,17 @@ public class DownloadManager {
     }
 
 
-
     private boolean hasNext(){
         return !downloadQueue.isEmpty();
     }
 
     //实际的下载方式
     private void startDownload(final DownloadTask downloadTask){
-        Log.i(TAG,String.format("添加下载进程：%s",downloadTask.toString()));
-        Runnable syncRun = new Runnable() {
+        logInstance.i(TAG,String.format("Add tasks to the download queue:%s",downloadTask.toString()));
+        downloadExecutors.execute(new Runnable() {
             @Override
             public void run() {
-                Log.i(TAG,"准备下载：" + downloadTask.toString());
+                logInstance.i(TAG,"prepare download:" + downloadTask.toString());
                 File file = new File(downloadTask.getFile_path());
                 if(file.exists()){
                     file.delete();
@@ -174,7 +176,7 @@ public class DownloadManager {
                 RetrofitHelper.getInstance()
                         .getRetrofit()
                         .create(DownloadService.class)
-                        .download(downloadTask.getDownload_url())
+                        .download("bytes=" + Long.toString(DownloadUtil.getRangeStart(downloadTask))+ "-",downloadTask.getDownload_url())
                         .map(new Function<ResponseBody, InputStream>() {
                             @Override
                             public InputStream apply(ResponseBody responseBody) throws Exception {
@@ -184,22 +186,35 @@ public class DownloadManager {
                         .subscribe(new Consumer<InputStream>() {
                             @Override
                             public void accept(InputStream inputStream) throws Exception {
-                                Log.i(TAG,"开始下载文件");
+                                logInstance.i(TAG,"start download:" + downloadTask.toString());
                                 //开始下载文件
                                 DownloadListenerImpl.getInstance().onStartDownLoad();
 
-                                writeFile(inputStream,downloadTask.getFile_path());
+                                downloadTask.setStatus(Status.DOWNLOADING);
+                                //下载文件
+                                boolean success = DownloadUtil.writeFile(inputStream,downloadTask);
 
-                                Log.i(TAG,"下载完成");
-                                //下载完成，执行下载完成回调
-                                if(downloadTask.getMd5() != null && downloadTask.getMd5().length() >0){
-                                    if(checkMd5(downloadTask.getFile_path(),downloadTask.getMd5())){
+                                if(success) {
+                                    //下载完成，执行下载完成回调
+                                    if (downloadTask.getMd5() != null && downloadTask.getMd5().length() > 0) {
+                                        if (DownloadUtil.checkMd5(downloadTask.getFile_path(), downloadTask.getMd5())) {
+                                            downloadTask.setStatus(Status.DOWNLOAD_SUCCESS);
+                                            logInstance.i(TAG, "download finish:" + downloadTask.toString());
+                                            DownloadListenerImpl.getInstance().onFinishDownload();
+                                        } else {
+                                            downloadTask.setStatus(Status.DOWNLOAD_ERROR);
+                                            logInstance.i(TAG, "download error:MD5 is mismatches" + downloadTask.toString());
+                                            DownloadListenerImpl.getInstance().onError(new Throwable("MD5 is mismatches"));
+                                        }
+                                    } else {
+                                        downloadTask.setStatus(Status.DOWNLOAD_SUCCESS);
+                                        logInstance.i(TAG, "download finish:" + downloadTask.toString());
                                         DownloadListenerImpl.getInstance().onFinishDownload();
-                                    }else{
-                                        DownloadListenerImpl.getInstance().onError(new Throwable("MD5 is mismatches"));
                                     }
-                                }else {
-                                    DownloadListenerImpl.getInstance().onFinishDownload();
+                                }else{
+                                    downloadTask.setStatus(Status.DOWNLOAD_ERROR);
+                                    logInstance.i(TAG, String.format("download error:write stream to file error,%s",downloadTask.toString()));
+                                    DownloadListenerImpl.getInstance().onError(new Throwable("Download fail"));
                                 }
                                 //移除下载任务
                                 removeDownloadTask(downloadTask);
@@ -208,8 +223,9 @@ public class DownloadManager {
                         }, new Consumer<Throwable>() {
                             @Override
                             public void accept(Throwable throwable) throws Exception {
-                                Log.e(TAG,"下载出错");
+                                logInstance.e(TAG,"download error:" + downloadTask.toString(),throwable);
                                 //下载出错
+                                downloadTask.setStatus(Status.DOWNLOAD_ERROR);
                                 DownloadListenerImpl.getInstance().onError(throwable);
                                 //移除下载任务，移除后DownloadListenerImpl.getInstance()中的监听对象会被置空
                                 removeDownloadTask(downloadTask);
@@ -217,47 +233,18 @@ public class DownloadManager {
                             }
                         });
             }
-        };
-
-        downloadExecutors.execute(syncRun);
-//        Future future = downloadExecutors.submit(syncRun);
+        });
 
     }
 
-    //写文件
-    private void writeFile(InputStream inputStream,String filePath) throws IOException {
-
-        FileOutputStream fileOutputStream = null ;
-
-        try {
-            fileOutputStream = new FileOutputStream(filePath);
-
-            byte[] bytes = new byte[1024];
-            int length ;
-            while((length = inputStream.read(bytes)) != -1 ){
-                fileOutputStream.write(bytes,0,length);
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            DownloadListenerImpl.getInstance().onError(e);
-        }finally {
-            if(fileOutputStream!= null){
-                fileOutputStream.close();
-            }
-            if(inputStream != null){
-                inputStream.close();
-            }
-        }
-
+    @Override
+    public void setLogOutput(LogOperate operate, boolean printf) {
+        DownloadLog.getInstance().setLogOperate(operate);
+        DownloadLog.getInstance().setPrintf(printf);
     }
 
-    //校验md5是否相同
-    private boolean checkMd5(String filePath ,String md5){
-        String fileMd5 = EncryptionCheckUtil.md5sum(filePath);
-        if(fileMd5 != null){
-            return fileMd5.toUpperCase().equals(md5.toUpperCase());
-        }
-        return false ;
+    private static final class DownloadManagerHolder{
+        static final DownloadManager instance = new DownloadManager();
     }
 
 }
