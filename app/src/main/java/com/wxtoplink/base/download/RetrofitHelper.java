@@ -1,9 +1,9 @@
 package com.wxtoplink.base.download;
 
-import com.wxtoplink.base.download.listener.DownloadInterceptor;
 
 import java.util.concurrent.TimeUnit;
 
+import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
@@ -16,21 +16,24 @@ public class RetrofitHelper {
 
     private Retrofit retrofit ;
 
-    private OkHttpClient httpClient ;
+    private final OkHttpClient httpClient ;
 
     private static final RetrofitHelper instance = new RetrofitHelper();
 
-    private RetrofitHelper(){
-        httpClient = new OkHttpClient.Builder()
-                .addInterceptor(DownloadInterceptor.getInstance())//添加拦截器
+    public RetrofitHelper() {
+        this.httpClient = new OkHttpClient.Builder()
                 .retryOnConnectionFailure(true)
                 .connectTimeout(2, TimeUnit.SECONDS)
                 .build();
-
-        retrofit = new Retrofit.Builder()
+        this.retrofit = new Retrofit.Builder()
                 .baseUrl("http://vs-new.geniusshelf.com/")
-                .client(httpClient)
                 .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
+                .build();
+    }
+
+    private OkHttpClient getHttpClient(Interceptor interceptor){
+        return httpClient.newBuilder()
+                .addInterceptor(interceptor)//添加拦截器
                 .build();
     }
 
@@ -38,8 +41,12 @@ public class RetrofitHelper {
         return instance ;
     }
 
-    public Retrofit getRetrofit(){
-        return retrofit ;
+    public Retrofit getRetrofit(Interceptor interceptor){
+
+        return retrofit.newBuilder()
+                .client(getHttpClient(interceptor))
+                .build() ;
+
     }
 
 }

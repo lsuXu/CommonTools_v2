@@ -24,9 +24,16 @@ public class DownloadResponseBody extends ResponseBody{
 
     private BufferedSource bufferedSource ;
 
+    private long startRange ;
+
     public DownloadResponseBody(ResponseBody responseBody, DownloadListener downloadListener) {
+        this(responseBody,downloadListener,0);
+    }
+
+    public DownloadResponseBody(ResponseBody responseBody, DownloadListener downloadListener ,long startRange) {
         this.responseBody = responseBody;
         this.downloadListener = downloadListener;
+        this.startRange = startRange ;
     }
 
     @Nullable
@@ -52,7 +59,9 @@ public class DownloadResponseBody extends ResponseBody{
 
         ForwardingSource forwardingSource = new ForwardingSource(source) {
 
-            long receiverByteSize = 0l;
+            long receiverByteSize = startRange ;
+
+            long totalByteSize = responseBody.contentLength() + startRange ;
 
             @Override
             public long read(Buffer sink, long byteCount) throws IOException {
@@ -60,7 +69,7 @@ public class DownloadResponseBody extends ResponseBody{
                 receiverByteSize =  receiverByteSize + (bytesRead != -1 ? bytesRead:0 );
                 if(downloadListener != null){
                     //已接收文件大小，总大小，下载进度
-                    downloadListener.onProgress(receiverByteSize,responseBody.contentLength(),(int) (receiverByteSize * 100 /responseBody.contentLength()));
+                    downloadListener.onProgress(receiverByteSize ,totalByteSize,(int) (receiverByteSize * 100 /totalByteSize));
                 }
                 return bytesRead ;
             }

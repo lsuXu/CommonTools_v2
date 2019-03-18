@@ -12,22 +12,23 @@ import okhttp3.Response;
 
 public class DownloadInterceptor implements Interceptor{
 
-    private DownloadListener downloadListener ;
+    private final DownloadListener downloadListener ;
 
-    private DownloadInterceptor(){
-        downloadListener = DownloadListenerImpl.getInstance();
+    private final long startRange ;
+
+    public DownloadInterceptor(DownloadListener downloadListener){
+        this(downloadListener , 0);
     }
 
-    private static final DownloadInterceptor instance = new DownloadInterceptor();
-
-    public static final DownloadInterceptor getInstance(){
-        return instance ;
+    public DownloadInterceptor(DownloadListener downloadListener ,long startRange){
+        this.downloadListener = downloadListener ;
+        this.startRange = startRange ;
     }
 
     @Override
     public Response intercept(Chain chain) throws IOException {
         Response response = chain.proceed(chain.request());
-        Response myResponse = response.newBuilder().body(new DownloadResponseBody(response.body(),downloadListener)).build();
+        Response myResponse = response.newBuilder().body(new DownloadResponseBody(response.body(),downloadListener, startRange)).build();
         return myResponse;
     }
 }
