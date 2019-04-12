@@ -69,7 +69,7 @@ public class DownloadResponseBody extends ResponseBody{
                 receiverByteSize =  receiverByteSize + (bytesRead != -1 ? bytesRead:0 );
                 if(downloadListener != null){
                     //已接收文件大小，总大小，下载进度
-                    downloadListener.onProgress(receiverByteSize ,totalByteSize,(int) (receiverByteSize * 100 /totalByteSize));
+                    downloadListener.onProgress(receiverByteSize ,totalByteSize,totalByteSize == 0 ? 100:(int) (receiverByteSize * 100 /totalByteSize));
                 }
                 return bytesRead ;
             }

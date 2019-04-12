@@ -8,13 +8,22 @@ android {
         minSdkVersion 21
         targetSdkVersion 26
         versionCode 1
-        versionName "1.2.4"
+        versionName "1.2.6"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        ndk {
+            abiFilters "armeabi-v7a"
+        }
     }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    sourceSets {
+        main {
+            jniLibs.srcDir 'libs'
         }
     }
 }
@@ -49,5 +58,5 @@ task makeJar(type:Copy){
     //现在只需要classes.jar这个文件
     include('classes.jar')
     //重命名
-    rename('classes.jar','base_tools_v2_1_2_4.jar')
+    rename('classes.jar','base_tools_v2_1_2_6.jar')
 }

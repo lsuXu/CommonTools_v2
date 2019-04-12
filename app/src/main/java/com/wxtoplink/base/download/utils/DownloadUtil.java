@@ -46,33 +46,30 @@ public class DownloadUtil {
         return startRange ;
     }
 
-    //写入文件
-    public static boolean writeFile(InputStream inputStream , DownloadTask downloadTask){
-        if(breakSupport(downloadTask)){//支持断点重传，获取重传文件名
-            String breakFilePath = generateBreakFilePath(downloadTask);
-            boolean success = writeFile(inputStream,breakFilePath,getRangeStart(downloadTask));
-            if(success){
-                File file = new File(breakFilePath);
-                return file.renameTo(new File(downloadTask.getFile_path()));
-            }
-            return false ;
-        }else{//不支持文件重传
-            return writeFile(inputStream,downloadTask.getFile_path(),0);
-        }
+    public static boolean writeFile(InputStream inputStream, String filePath) {
+        return writeFile(inputStream,filePath,0);
     }
 
-    /**
-     * 写文件
-     * @param inputStream 文件输入流
-     * @param filePath  文件路径
-     * @param startRange    写入开始范围
-     * @return
-     * @throws IOException
-     */
+        /**
+         * 写文件
+         * @param inputStream 文件输入流
+         * @param filePath  文件路径
+         * @param startRange    写入开始范围
+         * @return
+         * @throws IOException
+         */
     public static boolean writeFile(InputStream inputStream, String filePath,long startRange){
 
         boolean downloadSuccess = false;
         RandomAccessFile randomAccessFile = null;
+
+        //若是从头开始写，则先删除源文件
+        if(startRange == 0){
+            File file = new File(filePath);
+            if(file.exists()){
+                file.delete();
+            }
+        }
 
         try {
             byte[] buf = new byte[2048];
@@ -111,7 +108,7 @@ public class DownloadUtil {
     public static boolean checkMd5(String filePath ,String md5){
         String fileMd5 = EncryptionCheckUtil.md5sum(filePath);
         if(fileMd5 != null){
-            return fileMd5.toUpperCase().equals(md5.toUpperCase());
+            return fileMd5.equalsIgnoreCase(md5);
         }
         return false ;
     }

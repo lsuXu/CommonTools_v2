@@ -18,5 +18,6 @@ public interface RateCallBack {
      */
     void rate(long rxBytes , long netBytes ,long interval ,TimeUnit unit);
 
+    void onError(Throwable throwable);
 
 }
