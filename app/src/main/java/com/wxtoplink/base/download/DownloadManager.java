@@ -23,9 +23,7 @@ public final class DownloadManager implements LogOutput,Observer{
     private final String TAG ;
 
     //下载队列
-    private List<DownloadTask> downloadQueue ;
-
-    private List<DownloadService> downloadServiceList ;
+    private List<DownloadTask> downloadQueue ;//由waitExecutor线层负责操作，其他线层禁止操作
 
     //下载线层，实际的下载文件的线层
     private ExecutorService downloadExecutors ;
@@ -44,15 +42,14 @@ public final class DownloadManager implements LogOutput,Observer{
     private DownloadManager(){
         TAG = DownloadManager.class.getSimpleName();
         downloadQueue = new ArrayList<>();
-        downloadServiceList = new ArrayList<>(DEFAULT_SIZE);
         downloadExecutors = Executors.newFixedThreadPool(DEFAULT_SIZE);
         waitExecutor = Executors.newSingleThreadExecutor();
         logInstance = DownloadLog.getInstance();
     }
 
     //添加下载任务
-    public void downloadFile(String url ,String fileName,String filePath){
-        downloadFile(url,fileName,filePath,null);
+    public DownloadManager downloadFile(String url ,String fileName,String filePath){
+        return downloadFile(url,fileName,filePath,null);
     }
 
     /**
@@ -62,42 +59,43 @@ public final class DownloadManager implements LogOutput,Observer{
      * @param downloadListener 网络回调
      * @return
      */
-    public void downloadFile(String url,String fileName,String filePath, DownloadListener downloadListener){
+    public DownloadManager downloadFile(String url,String fileName,String filePath, DownloadListener downloadListener){
         DownloadTask downloadObject = new DownloadTask(url,fileName,filePath,null,downloadListener);
-        addDownloadTask(downloadObject,true);
+        return addDownloadTask(downloadObject,true);
     }
 
-    public void downloadFile(DownloadTask downloadTask){
-        addDownloadTask(downloadTask,true);
+    public DownloadManager downloadFile(DownloadTask downloadTask){
+        return addDownloadTask(downloadTask,true);
     }
 
-    public void downloadFile(DownloadTask downloadTask,boolean noRepeat){
-        addDownloadTask(downloadTask,noRepeat);
+    public DownloadManager downloadFile(DownloadTask downloadTask,boolean noRepeat){
+        return addDownloadTask(downloadTask,noRepeat);
     }
 
     public List<DownloadTask> getDownloadQueue(){
         return downloadQueue;
     }
 
-    public List<DownloadService> getDownloadServiceList(){
-        return downloadServiceList ;
-    }
 
-    //下载第一步:当下载队列发生改变时执行，判断当前下载状况，决定是否进行文件下载
-    private void download(){
-        if(!downloadQueue.isEmpty() && downloadServiceList.size()< 3){
-            for(DownloadTask downloadTask: downloadQueue){
-                if(downloadTask.getStatus() == Status.ORIGINAL.getId()){//查找初始状态的任务，进行下载
-                    downloadTask.setStatus(Status.PREPARE);//修改任务状态，避免重复添加到下载队列中
-                    startDownload(downloadTask);
-                    break;
+    //开始下载
+    public void startDownload(){
+        waitExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                if(!downloadQueue.isEmpty() ){
+                    for(DownloadTask downloadTask: downloadQueue){
+                        if(downloadTask.getStatus() == Status.ORIGINAL.getId()){//查找初始状态的任务，进行下载
+                            downloadTask.setStatus(Status.PREPARE);//修改任务状态，避免重复添加到下载队列中
+                            prepareDownload(downloadTask);
+                        }
+                    }
                 }
             }
-        }
+        });
     }
 
     //添加下载任务
-    private void addDownloadTask(final DownloadTask downloadTask,final boolean noRepeat){
+    private DownloadManager addDownloadTask(final DownloadTask downloadTask,final boolean noRepeat){
         waitExecutor.execute(new Runnable() {
             @Override
             public void run() {
@@ -111,9 +109,9 @@ public final class DownloadManager implements LogOutput,Observer{
                 }else {
                     logInstance.i(TAG, "The task already exists:" + downloadTask.toString());
                 }
-                download();
             }
         });
+        return this;
     };
 
     //移除下载任务
@@ -128,12 +126,6 @@ public final class DownloadManager implements LogOutput,Observer{
                 //移除下载任务回调
                 downloadTask.getDownloadListener().onRemoveQueue(downloadQueue.size());
 
-                //如果全部下载完成，执行完成回调
-                if(!hasNext()){
-                    downloadTask.getDownloadListener().onAllComplete();
-                }else{
-                    download();
-                }
             }
         });
     }
@@ -156,17 +148,14 @@ public final class DownloadManager implements LogOutput,Observer{
         return !downloadQueue.isEmpty();
     }
 
-    //实际的下载方式
-    private void startDownload(DownloadTask downloadTask){
-        final DownloadService downloadService = new DownloadService(downloadTask,this);
+    private void prepareDownload(DownloadTask downloadTask , Observer observer){
+        DownloadService downloadService = new DownloadService(downloadTask,observer);
+        downloadExecutors.execute(downloadService);
+    }
 
-        downloadExecutors.execute(new Runnable() {
-            @Override
-            public void run() {
-                downloadServiceList.add(downloadService);
-                downloadService.run();
-            }
-        });
+    //实际的下载方式
+    private void prepareDownload(DownloadTask downloadTask){
+        prepareDownload(downloadTask,this);
     }
 
     @Override
@@ -177,14 +166,16 @@ public final class DownloadManager implements LogOutput,Observer{
 
     @Override
     public void downloadFinish(final DownloadService downloadService) {
-        downloadExecutors.execute(new Runnable() {
-            @Override
-            public void run() {
-                downloadServiceList.remove(downloadService);
-                removeDownloadTask(downloadService.getDownloadTask());
-            }
-        });
+        removeDownloadTask(downloadService.getDownloadTask());
+    }
 
+    public void downloadGroup(Group group){
+        for(DownloadTask downloadTask : group.getWaitTasks()){
+            if(downloadTask.getStatus() != Status.PREPARE.getId()){
+                downloadTask.setStatus(Status.PREPARE);//修改任务状态，避免重复添加到下载队列中
+                prepareDownload(downloadTask,group.getGroupObserver());
+            }
+        }
     }
 
     private static final class DownloadManagerHolder{

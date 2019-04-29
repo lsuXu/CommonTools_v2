@@ -80,11 +80,6 @@ public abstract class TimerDownloadListenerAdapt implements DownloadListener,Tim
     }
 
     @Override
-    public void onAllComplete() {
-
-    }
-
-    @Override
     public void onError(Throwable throwable) {
 
     }

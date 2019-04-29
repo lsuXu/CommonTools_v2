@@ -34,11 +34,6 @@ public class DownloadListenerAdapt implements DownloadListener{
     }
 
     @Override
-    public void onAllComplete() {
-
-    }
-
-    @Override
     public void onError(Throwable throwable) {
 
     }
