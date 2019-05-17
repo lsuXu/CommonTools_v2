@@ -23,6 +23,7 @@ public class Group {
         this.groupId = groupId;
         this.waitTasks = waitTasks;
         this.groupListener = groupListener ;
+        this.finishTasks = new ArrayList<>();
         this.groupObserver = new Observer() {
             @Override
             public void downloadFinish(DownloadService downloadService) {
@@ -34,7 +35,6 @@ public class Group {
                 }
             }
         };
-        this.finishTasks = new ArrayList<>();
     }
 
     public int getGroupId() {
@@ -45,11 +45,15 @@ public class Group {
         return waitTasks;
     }
 
-    public GroupListener getGroupListener() {
+    GroupListener getGroupListener() {
         if(groupListener == null){
             groupListener = new GroupListenerAdapt();
         }
         return groupListener;
+    }
+
+    void notifyStart(){
+        groupListener.onStart(waitTasks.size() + finishTasks.size());
     }
 
     public List<DownloadTask> getFinishTasks() {
@@ -73,6 +77,8 @@ public class Group {
     }
 
     public interface GroupListener{
+
+        void onStart(int totalSize);
 
         //队列剩余大小
         void waitSize(int size);

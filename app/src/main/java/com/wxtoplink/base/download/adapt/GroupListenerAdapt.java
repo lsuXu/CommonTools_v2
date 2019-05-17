@@ -9,6 +9,11 @@ import com.wxtoplink.base.download.Group;
 public class GroupListenerAdapt implements Group.GroupListener{
 
     @Override
+    public void onStart(int totalSize) {
+
+    }
+
+    @Override
     public void waitSize(int size) {
 
     }

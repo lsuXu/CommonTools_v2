@@ -8,7 +8,7 @@ android {
         minSdkVersion 21
         targetSdkVersion 26
         versionCode 1
-        versionName "1.2.7"
+        versionName "1.2.8"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         ndk {
             abiFilters "armeabi-v7a"
@@ -58,5 +58,5 @@ task makeJar(type:Copy){
     //现在只需要classes.jar这个文件
     include('classes.jar')
     //重命名
-    rename('classes.jar','base_tools_v2_1_2_7.jar')
+    rename('classes.jar','base_tools_v2_1_2_8.jar')
 }
