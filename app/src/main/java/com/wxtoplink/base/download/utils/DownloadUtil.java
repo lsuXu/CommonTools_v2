@@ -10,6 +10,7 @@ import java.io.InputStream;
 import java.io.RandomAccessFile;
 
 /**
+ * 下载工具类
  * Created by 12852 on 2019/2/28.
  */
 
@@ -46,12 +47,18 @@ public class DownloadUtil {
         return startRange ;
     }
 
+    /**
+     * 写入文件
+     * @param inputStream 输入流
+     * @param filePath 文件路径
+     * @return 写入成功
+     */
     public static boolean writeFile(InputStream inputStream, String filePath) {
         return writeFile(inputStream,filePath,0);
     }
 
         /**
-         * 写文件
+         * 随机写入文件
          * @param inputStream 文件输入流
          * @param filePath  文件路径
          * @param startRange    写入开始范围
@@ -74,7 +81,8 @@ public class DownloadUtil {
         try {
             byte[] buf = new byte[2048];
             randomAccessFile = new RandomAccessFile(filePath, "rwd");
-            randomAccessFile.seek(startRange);//寻找定位到文件结尾
+            //寻找定位到文件结尾
+            randomAccessFile.seek(startRange);
 
             int len = 0;
             while ((len = inputStream.read(buf)) != -1) {
@@ -106,8 +114,10 @@ public class DownloadUtil {
 
     //校验md5是否相同
     public static boolean checkMd5(String filePath ,String md5){
+        //计算文件md5
         String fileMd5 = EncryptionCheckUtil.md5sum(filePath);
         if(fileMd5 != null){
+            //比较md5是否相同
             return fileMd5.equalsIgnoreCase(md5);
         }
         return false ;

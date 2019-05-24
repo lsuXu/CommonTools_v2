@@ -25,42 +25,48 @@ import java.util.List;
 
 
 /**
+ * 仅提供拍照功能
  * Created by 12852 on 2018/8/29.
  */
 
 public class CameraTakePhotoImpl extends CameraTemplateImpl implements CameraTakePhoto {
 
-    private ImageReader photoImageReader ;
-    private TextureView textureView ;
-    private int photoFormat ;
-    private Size photoMaxSize ;
-    private Size photoFitSize ;
+    private ImageReader photoImageReader ;//照片数据获取
+    private TextureView textureView ;//预览界面
+    private int photoFormat ;//照片格式
+    private Size photoMaxSize ;//照片最大格式
+    private Size photoFitSize ;//照片合适的大小
 
     public CameraTakePhotoImpl(Context context) {
         super(context);
         photoFormat = ImageFormat.JPEG ;//无界面预览模式，默认使用JPEG格式进行拍照，还支持YUV_420_888数据格式
     }
 
+    //预览输出表面
     @Override
     public List<Surface> getPreviewSurfaceList() {
         return Arrays.asList(new Surface(textureView.getSurfaceTexture()));
     }
 
+    //预设所有的输出表面
     @Override
     public List<Surface> getPresetSurfaceList() {
         return Arrays.asList(new Surface(textureView.getSurfaceTexture()),photoImageReader.getSurface());
     }
 
+    //开始预览
     @RequiresPermission(android.Manifest.permission.CAMERA)
     @Override
     public synchronized void startPreview() {
+
+        //获取调用程序的looper
         setHostHandler();
 
         if(textureView == null){
             throw new NullPointerException("The target canvas is null ,You should call setSurfaceView() before calling startPreview()");
         }else{
-            if(textureView.isAvailable()){
-                //预览界面存在，且当前状态可获取
+            if(textureView.isAvailable()){//预览界面存在，且当前状态可获取
+                //打开相机
                 openCamera();
             }else{
                 //预览界面没有准备好，那么设置预览界面的监听器，等它准备好后再重新开始预览
@@ -69,6 +75,7 @@ public class CameraTakePhotoImpl extends CameraTemplateImpl implements CameraTak
         }
     }
 
+    //停止预览
     @Override
     public synchronized void stopPreview() {
         super.stopPreview();
@@ -81,52 +88,74 @@ public class CameraTakePhotoImpl extends CameraTemplateImpl implements CameraTak
         }
     }
 
+    //初始化纹理表面
     @Override
     public void initSurface() {
         Size fitSize = getFitPhotoSize();
         photoImageReader = ImageReader.newInstance(fitSize.getWidth(),fitSize.getHeight(),photoFormat,1);
     }
 
-
+    //设置预览视图
     @Override
     public void setSurfaceView(TextureView view) {
         this.textureView = view ;
     }
 
+    //设置照片格式
     @Override
     public void setPhotoFormat(int photoFormat) {
         this.photoFormat = photoFormat ;
     }
 
+    //设置照片最大尺寸
     @Override
     public void setPhotoMaxSize(Size photoMaxSize) {
         this.photoMaxSize = photoMaxSize ;
     }
 
+    //获取最合适的照片尺寸大小
     @Override
     public Size getFitPhotoSize() {
         if(photoFitSize == null){
+            //根据相机方向，图片格式以及允许的最大大小，获取最合适的照片大小
             photoFitSize = CameraUtils.getFitSize(context,getCameraId(),photoFormat,photoMaxSize);
         }
         return photoFitSize;
     }
 
-    //拍照保存，需传入保存路径
+    /**
+     * 拍照保存到指定路径
+     * @param filePath 文件路径
+     */
     public void takePhoto(final String filePath){
         takePhoto(filePath,false);
     }
 
+    /**
+     * 拍照保存到指定文件路径
+     * @param filePath 文件路径
+     * @param stopPreview 拍照的后续操作，true为停止预览
+     */
     @Override
     public void takePhoto(String filePath, boolean stopPreview) {
         initTakePhotoImageReader(filePath);
         capturePhoto(stopPreview);
     }
 
+    /**
+     * 拍照回调，直接获取拍照的源数据进行处理
+     * @param capturePhotoCallBack 拍照回调
+     */
     @Override
     public void takePhoto(CapturePhotoCallBack capturePhotoCallBack) {
         takePhoto(capturePhotoCallBack,false);
     }
 
+    /**
+     * 拍照回调，直接获取拍照的源数据进行处理，可选是否在拍照后停止预览
+     * @param capturePhotoCallBack 拍照回调
+     * @param stopPreview true停止预览
+     */
     @Override
     public void takePhoto(CapturePhotoCallBack capturePhotoCallBack, boolean stopPreview) {
         initTakePhotoImageReader(capturePhotoCallBack);

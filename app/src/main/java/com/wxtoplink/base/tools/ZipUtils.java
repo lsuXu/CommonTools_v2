@@ -12,6 +12,7 @@ import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 /**
+ * 压缩工具类
  * Created by 12852 on 2018/11/27.
  */
 
@@ -105,6 +106,9 @@ public class ZipUtils {
         }
     }
 
+    /**
+     * 压缩文件或目录
+     */
     private static void zipFileOrDirectory(ZipOutputStream out,
                                            File fileOrDirectory, String curPath) throws IOException {
         //从文件中读取字节的输入流

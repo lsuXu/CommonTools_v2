@@ -10,7 +10,7 @@ public enum NetworkType {
     WIFI ,//无线网络
     MOBILE_2G,//移动2G网络
     MOBILE_3G,//移动3G网络
-    MOBILE_4G,
+    MOBILE_4G,//移动4G网络
     CMCC,//中国移动
     UNINET,//中国联通
     TELECOM;//中国电信

@@ -52,14 +52,18 @@ public class CameraComponent implements LogOutput{
                     cameraTemplate = cameraTemplateMap.get(cameraType.getTypeName());
                     currentCameraType = cameraType;//标记当前使用的相机类型
                 } else {
-                        Constructor constructor = cameraType.getTargetClass().getConstructor(Context.class);
-                        if (constructor != null) {
-                            cameraTemplate = (CameraTemplate) constructor.newInstance(context);
-                            if (cameraTemplate != null) {
-                                cameraTemplateMap.put(cameraType.getTypeName(), cameraTemplate);
-                                currentCameraType = cameraType;//标记当前使用的相机类型
-                            }
+                    //获取构造器
+                    Constructor constructor = cameraType.getTargetClass().getConstructor(Context.class);
+                    if (constructor != null) {
+                        //创建实例
+                        cameraTemplate = (CameraTemplate) constructor.newInstance(context);
+                        if (cameraTemplate != null) {
+                            //保存实例
+                            cameraTemplateMap.put(cameraType.getTypeName(), cameraTemplate);
+                            //标记当前使用的相机类型
+                            currentCameraType = cameraType;
                         }
+                    }
                 }
                 return cameraTemplate;
             }

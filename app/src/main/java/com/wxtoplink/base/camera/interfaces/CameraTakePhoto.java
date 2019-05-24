@@ -9,7 +9,7 @@ import android.view.TextureView;
 
 public interface CameraTakePhoto {
 
-    void setSurfaceView(TextureView textureView);
+    void setSurfaceView(TextureView textureView);//设置预览视图
 
     void setPhotoFormat(int photoFormat);//设置照片格式
 

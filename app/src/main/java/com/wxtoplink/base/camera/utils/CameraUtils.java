@@ -25,6 +25,7 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
+ * Camear工具类
  * Created by 12852 on 2018/8/28.
  */
 
@@ -32,22 +33,32 @@ public class CameraUtils {
 
     private static final String TAG = CameraUtils.class.getSimpleName() ;
 
+    /**
+     * 获取相机的合适大小
+     * @param context 上下文
+     * @param cameraId 相机方向
+     * @param format 数据格式
+     * @param maxSize 允许的最大大小
+     * @return 最适宜的大小
+     */
     public static Size getFitSize(@NonNull Context context,@Nullable String cameraId,@NonNull int format,@Nullable Size maxSize){
         CameraManager cameraManager ;
 
         try {
             if(cameraId == null){
+                //获取默认相机方向
                 cameraId = getDefaultCameraId(context);
             }
             cameraManager = (CameraManager) context.getSystemService(Context.CAMERA_SERVICE);
             CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
             StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+            //获取支持的输出大小
             Size[] supportSize = map.getOutputSizes(format);
             if(supportSize == null){
                 throw new IllegalArgumentException(String.format(
                         "format 0x%x was not defined in either ImageFormat or PixelFormat", format));
             }
-            return CameraUtils.getFitSize(Arrays.asList(supportSize),maxSize);
+            return getFitSize(Arrays.asList(supportSize),maxSize);
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
@@ -55,6 +66,12 @@ public class CameraUtils {
         return null ;
     }
 
+    /**
+     * 获取合适大小
+     * @param sizeList 大小列表
+     * @param maxSize 允许最大大小
+     * @return 最合适的大小
+     */
     public static Size getFitSize(@NonNull List<Size> sizeList,@Nullable Size maxSize){
         /**
          * 基于图片的区域( 宽 * 高 )，比较它们的大小，进行排序
@@ -132,6 +149,7 @@ public class CameraUtils {
         }
     }
 
+    //获取相机的设备列表
     public static String [] getCameraList(@NonNull Context context) throws CameraAccessException{
         return ((CameraManager) context.getApplicationContext().getSystemService(Context.CAMERA_SERVICE)).getCameraIdList();
     }
@@ -139,11 +157,10 @@ public class CameraUtils {
     //校验相机ID是否可用
     public static boolean checkCameraId(@NonNull Context context,@NonNull String cameraId) throws CameraAccessException {
 
-        String [] supportCameraList = null;
-
-        supportCameraList = ((CameraManager) context.getApplicationContext().getSystemService(Context.CAMERA_SERVICE)).getCameraIdList();
+        String [] supportCameraList = getCameraList(context);
 
         for(String supportCameraId : supportCameraList){
+            //判断相机方向是否匹配
             if(supportCameraId.equals(cameraId)){
                 return true ;
             }
@@ -152,17 +169,31 @@ public class CameraUtils {
 
     }
 
+    /**
+     * 保存图片
+     * @param image JPEG数据格式图片
+     * @param path  保存路径
+     * @return true,保存成功
+     */
     public static boolean saveImage(@NonNull Image image ,@NonNull String path){
         if(image.getFormat() != ImageFormat.JPEG){
             throw new IllegalArgumentException("This method only supports ImageFormat.JPEG format");
         }else{
             ByteBuffer byteBuffer = image.getPlanes()[0].getBuffer();
             byte [] data = new byte[byteBuffer.capacity()];
+            //将图片数据存到data中
             byteBuffer.get(data);
+            //保存图片
             return saveImage(data,path);
         }
     }
 
+    /**
+     * 保存图片
+     * @param data jpeg数据流
+     * @param path  保存路径
+     * @return true ,保存成功
+     */
     public static boolean saveImage(@NonNull byte[] data ,@NonNull String path){
         FileOutputStream output = null;
         try {

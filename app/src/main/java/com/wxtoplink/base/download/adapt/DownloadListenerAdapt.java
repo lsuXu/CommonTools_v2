@@ -4,6 +4,7 @@ import com.wxtoplink.base.download.DownloadTask;
 import com.wxtoplink.base.download.listener.DownloadListener;
 
 /**
+ * 下载监听适配器
  * Created by 12852 on 2018/11/28.
  */
 

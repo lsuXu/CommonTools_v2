@@ -9,6 +9,7 @@ import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 
 /**
+ * 下载网络工具类
  * Created by 12852 on 2018/7/24.
  */
 

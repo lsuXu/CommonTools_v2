@@ -33,7 +33,7 @@ public final class Camera2Holder {
 
     private Handler cameraHandler ;
 
-    private AbstractLog logInstance ;
+    private AbstractLog logInstance ;//日志输出
 
     private Camera2Holder() {
         logInstance = CameraLog.getInstance();
@@ -61,7 +61,9 @@ public final class Camera2Holder {
     @RequiresPermission(android.Manifest.permission.CAMERA)
     public void preOpenCamera(@NonNull Context context,@NonNull String cameraId) throws CameraAccessException{
         logInstance.i(TAG,"preOpenCamera(), init cameraDevice");
-        closeCameraDevice();//清除已经打开的Camera实例
+        //清除已经打开的Camera实例
+        closeCameraDevice();
+        //打开相机
         getCameraManager(context).openCamera(cameraId, inStateCallback, getHandle());
     }
 
@@ -99,7 +101,6 @@ public final class Camera2Holder {
 
     /**
      * 启动一个后台线程以及它的Handle
-     * Starts a background thread and its {@link Handler}.
      */
     private void startCameraThread() {
         cameraHandleThread = new HandlerThread("CameraDeviceThread");
@@ -109,7 +110,6 @@ public final class Camera2Holder {
 
     /**
      * 停止后台线程以及它的Handle
-     * Stops the background thread and its {@link Handler}.
      */
     private void stopCameraThread() {
         if(cameraHandleThread != null) {

@@ -3,6 +3,7 @@ package com.wxtoplink.base.download.adapt;
 import com.wxtoplink.base.download.Group;
 
 /**
+ * 下载任务组监听适配器
  * Created by 12852 on 2019/4/25.
  */
 

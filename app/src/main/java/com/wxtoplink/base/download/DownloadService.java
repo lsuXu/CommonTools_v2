@@ -24,15 +24,15 @@ import retrofit2.adapter.rxjava2.HttpException;
 
 public final class DownloadService implements Runnable{
 
-    private final DownloadTask downloadTask ;
+    private final DownloadTask downloadTask ;//下载任务
 
-    private final DownloadListener downloadListener ;
+    private final DownloadListener downloadListener ;//下载监听器
 
-    private final Observer observer ;
+    private final Observer observer ;//父监听器，用于通知调用者下载状态
 
     private boolean uniqueIdentifierSupport ;//存在唯一ID支持
 
-    private String breakFilePath ;
+    private String breakFilePath ;//断点续传使用的文件名
 
     private long startRange , totalSize ;//开始范围，以及文件总大小，文件总大小为-1表示获取文件总大小失败
 
@@ -44,10 +44,12 @@ public final class DownloadService implements Runnable{
         this.observer = observer;
     }
 
+    //获取下载监听器
     public DownloadListener getDownloadListener() {
         return downloadListener;
     }
 
+    //获取下载任务
     public DownloadTask getDownloadTask() {
         return downloadTask;
     }
@@ -61,9 +63,10 @@ public final class DownloadService implements Runnable{
 
         startRange = DownloadUtil.getRangeStart(downloadTask);//开始范围
 
-        uniqueIdentifierSupport = DownloadUtil.breakSupport(downloadTask);
+        uniqueIdentifierSupport = DownloadUtil.breakSupport(downloadTask);//判断是否支持断点续传
 
         if(uniqueIdentifierSupport){//唯一标志支持
+            //生成断点续传文件名
             breakFilePath = DownloadUtil.generateBreakFilePath(downloadTask);
         }
 
@@ -76,8 +79,11 @@ public final class DownloadService implements Runnable{
             }else if(totalSize != 0){//文件大小不为0，但是当前大小已经超出了文件范围
                 File file = new File(breakFilePath);
                 if(DownloadUtil.checkMd5(breakFilePath,downloadTask.getMd5())){//MD5匹配成功，重命名，触发完成回调
+                    //文件重命名
                     file.renameTo(new File(downloadTask.getFile_path()));
+                    //设置下载状态
                     setDownloadStatus(Status.DOWNLOAD_SUCCESS);
+                    //通知下载完成
                     observer.downloadFinish(this);
                     return;
                 }else{
@@ -113,6 +119,7 @@ public final class DownloadService implements Runnable{
                         if (success) {
                             //下载完成，执行下载完成回调
                             if (downloadTask.getMd5() != null && downloadTask.getMd5().length() > 0) {
+                                //校验文件md5
                                 if (DownloadUtil.checkMd5(downloadTask.getFile_path(), downloadTask.getMd5())) {
                                     setDownloadStatus(Status.DOWNLOAD_SUCCESS);//下载成功
                                 } else {
@@ -144,6 +151,7 @@ public final class DownloadService implements Runnable{
                 });
     }
 
+    //断点续传下载，添加范围
     private void initBreakPointDownload(){
         responseBodyObservable = RetrofitHelper.getInstance()
                 .getRetrofit(new DownloadInterceptor(downloadListener, startRange))
@@ -151,6 +159,7 @@ public final class DownloadService implements Runnable{
                 .download(String.format("bytes=%s-%s", startRange, totalSize == -1?"":totalSize), downloadTask.getDownload_url());
     }
 
+    //普通下载
     private void initNormalDownload(){
         responseBodyObservable = RetrofitHelper.getInstance()
                 .getRetrofit(new DownloadInterceptor(downloadListener, startRange))
@@ -162,9 +171,11 @@ public final class DownloadService implements Runnable{
     //根据条件写入文件
     private boolean writeFile(InputStream inputStream , DownloadTask downloadTask){
         if(uniqueIdentifierSupport){//支持断点重传，获取重传文件名
+            //写入文件
             boolean success = DownloadUtil.writeFile(inputStream,breakFilePath,startRange);
             if(success){
                 File file = new File(breakFilePath);
+                //重命名
                 return file.renameTo(new File(downloadTask.getFile_path()));
             }
             return false ;
@@ -175,15 +186,18 @@ public final class DownloadService implements Runnable{
 
     //416错误，断点续传部分，range超出文件总大小范围
     private boolean expectedErrorDeal(Throwable throwable){
+        //416报错，为range超出文件大小
         if((throwable instanceof HttpException && ((HttpException) throwable).code() == 416)
                 ||(throwable instanceof retrofit2.HttpException && ((retrofit2.HttpException) throwable).code() == 416)){
-            if(DownloadUtil.checkMd5(breakFilePath,downloadTask.getMd5())){
+            //判断此时md5是否匹配
+            if(DownloadUtil.checkMd5(breakFilePath,downloadTask.getMd5())){//匹配成功，下载完成
                 File file = new File(breakFilePath);
+                //重命名
                 return file.renameTo(new File(downloadTask.getFile_path()));
-            }else {
+            }else {//匹配失败，文件下载失败
                 File breakFile = new File(breakFilePath);
                 if(breakFile.exists()){
-                    breakFile.delete() ;
+                    breakFile.delete() ;//删除错误文件
                 }
             }
         }

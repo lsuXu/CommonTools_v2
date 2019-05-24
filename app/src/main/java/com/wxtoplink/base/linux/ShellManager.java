@@ -50,6 +50,7 @@ public final class ShellManager implements LogOutput{
         return instance ;
     }
 
+    //获取连接
     public synchronized ShellProcess getConnected() throws IOException {
         existTime = 0 ;
         if(timeDisposable == null || timeDisposable.isDisposed()){

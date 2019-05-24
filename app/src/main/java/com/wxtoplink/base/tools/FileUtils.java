@@ -100,10 +100,12 @@ public class FileUtils {
         return true;
     }
 
+    //压缩
     public static void zip(String folder,String dest) throws IOException{
         ZipUtils.zip(folder,dest);
     }
 
+    //解压
     public static void unZip(String archive, String decompressDir) throws IOException{
         ZipUtils.unZip(archive,decompressDir);
     }

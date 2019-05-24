@@ -10,6 +10,7 @@ import java.io.OutputStream;
 import java.util.Vector;
 
 /**
+ * linux命令执行部分
  * Created by 12852 on 2018/7/30.
  */
 
@@ -17,12 +18,12 @@ public class ShellProcess {
 
     private static final String TAG = ShellProcess.class.getSimpleName();
 
-    private AbstractLog logInstance ;
+    private AbstractLog logInstance ;//日志输出
 
     public ShellProcess(Process process) {
         this.process = process;
         logInstance = LinuxLog.getInstance();
-        initEnvironment();
+        initEnvironment();//初始化运行环境
     }
 
     private int requestCount = 0 ;
@@ -76,6 +77,7 @@ public class ShellProcess {
         }
     }
 
+    //判断是否关闭
     public boolean isClose(){
         return isClose ;
     }
@@ -108,6 +110,7 @@ public class ShellProcess {
         }
     }
 
+    //输出线层
     private class OutputRunnable implements Runnable{
 
         @Override
@@ -148,6 +151,7 @@ public class ShellProcess {
         }
     }
 
+    //输入线层，循环扫描输入的指令
     private class InputRunnable implements Runnable{
 
         @Override

@@ -17,6 +17,7 @@ import io.reactivex.functions.Function;
 import io.reactivex.schedulers.Schedulers;
 
 /**
+ * 网速测试工具类
  * Created by 12852 on 2019/3/20.
  */
 
@@ -24,6 +25,7 @@ public class NetworkSpeedTest {
 
     private volatile boolean interruptFlag = true , cancelFlag = false;
 
+    //测试使用url
     private String url = "http://testjnj.geniusshelf.com/media/file/version/201903/TeamViewerHost.apk";
 
     private URL mUrl ;
@@ -110,15 +112,18 @@ public class NetworkSpeedTest {
     private void recordStart(){
         //开始下载时间
         downStartTime = new Date().getTime() ;
+        //开始时网络流量使用大小
         rxStartSize = getTotalRxBytes() ;
     }
 
     //记录下载停止时的数据信息
     private void recordEnd(){
         if(downEndTime == 0){
+            //结束时间
             downEndTime = new Date().getTime();
         }
         if(rxEndSize == 0){
+            //结束时流量总共使用大小
             rxEndSize = getTotalRxBytes();
         }
     }

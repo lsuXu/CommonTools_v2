@@ -123,6 +123,7 @@ public final class DownloadManager implements LogOutput,Observer{
     }
 
 
+    //添加到下载线层，预备下载
     private void prepareDownload(DownloadTask downloadTask , Observer observer){
         DownloadService downloadService = new DownloadService(downloadTask,observer);
         downloadExecutors.execute(downloadService);
@@ -144,6 +145,7 @@ public final class DownloadManager implements LogOutput,Observer{
         removeDownloadTask(downloadService.getDownloadTask());
     }
 
+    //下载任务组
     public void downloadGroup(Group group){
         group.notifyStart();
         for(DownloadTask downloadTask : group.getWaitTasks()){

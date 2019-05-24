@@ -27,19 +27,20 @@ import java.util.List;
 
 
 /**
+ * 带预览界面的数据预览使用
  * Created by 12852 on 2018/8/29.
  */
 
 public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakePhoto,CameraPreviewData{
 
-    private ImageReader previewImageReader ;
-    private ImageReader photoImageReader ;
-    private TextureView textureView ;
-    private PreviewDataCallBack previewDataCallBack ;
+    private ImageReader previewImageReader ;//预览数据获取源
+    private ImageReader photoImageReader ;//拍照数据获取源
+    private TextureView textureView ;//预览显示视图
+    private PreviewDataCallBack previewDataCallBack ;//预览数据回调
 
-    private int photoFormat ;
-    private Size photoMaxSize ;
-    private Size photoFitSize ;
+    private int photoFormat ;//照片格式
+    private Size photoMaxSize ;//照片最大尺寸
+    private Size photoFitSize ;//照片最适宜的尺寸
 
     public ViewPreviewCamera(Context context) {
         super(context);
@@ -62,7 +63,7 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
     }
 
 
-
+    //开始预览
     @Override
     @RequiresPermission(android.Manifest.permission.CAMERA)
     public synchronized void startPreview() {
@@ -81,6 +82,7 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
         }
     }
 
+    //停止预览
     @Override
     public synchronized void stopPreview() {
         super.stopPreview();
@@ -95,6 +97,7 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
 
     }
 
+    //初始化纹理表面
     @Override
     public void initSurface() {
         //初始化预览数据回调的imageReader
@@ -104,9 +107,11 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
             @Override
             public void onImageAvailable(ImageReader reader) {
                 if(previewImageReader != null) {
+                    //获取预览数据
                     Image image = previewImageReader.acquireLatestImage();
                     if (image != null) {
                         if (previewDataCallBack != null) {
+                            //输出预览数据
                             previewDataCallBack.previewData(image);
                         }
                         image.close();
@@ -121,45 +126,67 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
     }
 
 
+    //设置预览视图
     @Override
     public void setSurfaceView(TextureView view) {
         this.textureView = view ;
     }
 
+    //设置拍照格式
     @Override
     public void setPhotoFormat(int photoFormat) {
         this.photoFormat = photoFormat ;
     }
 
+    //设置拍照照片最大大小
     @Override
     public void setPhotoMaxSize(Size photoMaxSize) {
         this.photoMaxSize = photoMaxSize ;
     }
 
+    //获取拍照最适宜的尺寸
     @Override
     public Size getFitPhotoSize() {
         if(photoFitSize == null){
+            //根据相机方向，图片格式以及允许的最大大小，获取最合适的照片大小
             photoFitSize = CameraUtils.getFitSize(context,getCameraId(),photoFormat,photoMaxSize);
         }
         return photoFitSize;
     }
 
-    //拍照保存，需传入保存路径
+    /**
+     * 拍照保存到指定路径
+     * @param filePath 文件路径
+     */
     public void takePhoto(final String filePath){
         takePhoto(filePath,false);
     }
 
+    /**
+     * 拍照保存到指定文件路径
+     * @param filePath 文件路径
+     * @param stopPreview 拍照的后续操作，true为停止预览
+     */
     @Override
     public void takePhoto(String filePath, boolean stopPreview) {
         initPhotoImageReader(filePath);
         capturePhoto(stopPreview);
     }
 
+    /**
+     * 拍照回调，直接获取拍照的源数据进行处理
+     * @param capturePhotoCallBack 拍照回调
+     */
     @Override
     public void takePhoto(@NonNull CapturePhotoCallBack capturePhotoCallBack) {
         takePhoto(capturePhotoCallBack,false);
     }
 
+    /**
+     * 拍照回调，直接获取拍照的源数据进行处理，可选是否在拍照后停止预览
+     * @param capturePhotoCallBack 拍照回调
+     * @param stopPreview true停止预览
+     */
     @Override
     public void takePhoto(CapturePhotoCallBack capturePhotoCallBack, boolean stopPreview) {
         initPhotoImageReader(capturePhotoCallBack);
@@ -227,11 +254,15 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
             public void onImageAvailable(ImageReader reader) {
                 Image image = reader.acquireLatestImage();
                 if(image != null){
-                    if(image.getFormat() == ImageFormat.JPEG) {
+                    if(image.getFormat() == ImageFormat.JPEG) {//图片格式为JPEG
+                        //保存图片
                         CameraUtils.saveImage(image, path);
-                    }else if(image.getFormat() == ImageFormat.YUV_420_888){
+                    }else if(image.getFormat() == ImageFormat.YUV_420_888){//图片格式为YUV_420_888，进行转码后保存
+                        //数据格式转换（YUV_420_888->Nv21）
                         byte [] nv21Byte = ByteDataFormat.formatYUV420_888ToNV21(image);
+                        //数据格式转换（Nv21->JPEG）
                         byte [] jpegByte = ByteDataFormat.NV21_2_JPEG(nv21Byte,image.getWidth(),image.getHeight());
+                        //保存图片
                         CameraUtils.saveImage(jpegByte,path);
                     }else{//直接保存照片的拍照方式仅支持JPEG格式以及YUV_420_888格式，其余格式，调用initTakePhotoImageReader(CapturePhotoCallBack)自行实现
                         image.close();
@@ -249,8 +280,10 @@ public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakeP
         photoImageReader.setOnImageAvailableListener(new ImageReader.OnImageAvailableListener() {
             @Override
             public void onImageAvailable(ImageReader reader) {
+                //获取照片数据
                 Image image = reader.acquireLatestImage();
                 if(image != null){
+                    //发送照片数据
                     capturePhotoCallBack.captureData(image);
                     image.close();
                 }

@@ -15,6 +15,7 @@ import android.telephony.TelephonyManager;
 import java.lang.reflect.Method;
 
 /**
+ * 网络工具类
  * Created by 12852 on 2019/3/18.
  */
 
@@ -26,6 +27,7 @@ public class NetworkTools {
         ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
         if (networkInfo != null) {
+            //网络是否可用
             return networkInfo.isAvailable();
         }
         return false;
@@ -37,6 +39,7 @@ public class NetworkTools {
         ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI);
         if (networkInfo != null) {
+            //网络是否连接
             return networkInfo.isConnected();
         }
         return false;
@@ -46,8 +49,10 @@ public class NetworkTools {
     @RequiresPermission(android.Manifest.permission.ACCESS_NETWORK_STATE)
     public static boolean isMobileConnect(@NonNull Context context) {
         ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        //获取移动网络信息
         NetworkInfo networkInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
         if (networkInfo != null) {
+            //移动网络是否连接
             return networkInfo.isConnected();
         }
         return false;
@@ -60,8 +65,10 @@ public class NetworkTools {
      */
     @RequiresPermission(allOf = {android.Manifest.permission.ACCESS_WIFI_STATE,android.Manifest.permission.ACCESS_NETWORK_STATE})
     public static int getWifiRssi(@NonNull Context context) {
+        //判断wifi是否连接
         if (isWifiConnect(context)) {
             WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+            //获取wifi网络信息
             WifiInfo wifiInfo = wifiManager.getConnectionInfo();
             //该方法返回信号范围为-100 至0 ，0为信号最强
             return wifiInfo.getRssi();
@@ -98,6 +105,7 @@ public class NetworkTools {
     public static NetworkInfo getConnectNetInfo(@NonNull Context context) {
         ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
+        //存在可用的网络
         if (networkInfo != null && networkInfo.isAvailable()) {
             return networkInfo;
         }
@@ -119,9 +127,9 @@ public class NetworkTools {
         TelephonyManager telephonyManager = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
 
         if(cancel){
-            telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_NONE);
+            telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_NONE);//取消监听
         }else {
-            telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_SIGNAL_STRENGTHS);
+            telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_SIGNAL_STRENGTHS);//设置监听
         }
     }
 

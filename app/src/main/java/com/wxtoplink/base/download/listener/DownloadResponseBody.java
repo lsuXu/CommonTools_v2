@@ -59,9 +59,9 @@ public class DownloadResponseBody extends ResponseBody{
 
         ForwardingSource forwardingSource = new ForwardingSource(source) {
 
-            long receiverByteSize = startRange ;
+            long receiverByteSize = startRange ;//已接收的大小
 
-            long totalByteSize = responseBody.contentLength() + startRange ;
+            long totalByteSize = responseBody.contentLength() + startRange ;//总大小
 
             @Override
             public long read(Buffer sink, long byteCount) throws IOException {

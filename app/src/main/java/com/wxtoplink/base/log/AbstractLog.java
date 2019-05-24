@@ -3,6 +3,7 @@ package com.wxtoplink.base.log;
 import android.util.Log;
 
 /**
+ * 日志上输出抽象类
  * Created by 12852 on 2019/2/28.
  */
 

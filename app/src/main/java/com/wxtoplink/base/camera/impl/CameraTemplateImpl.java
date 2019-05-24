@@ -28,14 +28,14 @@ import java.util.List;
 
 
 /**
- * 常用相机类，用于预览拍照使用
+ * Camera2模板
  * Created by 12852 on 2018/8/28.
  */
 
 public abstract class CameraTemplateImpl implements CameraTemplate {
 
     private final String TAG ;
-    private AbstractLog logInstance ;
+    private AbstractLog logInstance ;//日志输出
 
     CameraTemplateImpl(Context context) {
         TAG = CameraTemplateImpl.this.getClass().toString() ;
@@ -60,23 +60,28 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
     //捕获请求的构造类，是CaptureRequest的工厂类
     CaptureRequest.Builder captureRequestBuilder;
 
+    //捕捉会话
     CameraCaptureSession cameraCaptureSession;
 
+    //camera会话运行线层
     private HandlerThread mBackgroundThread;
 
     private Handler mBackgroundHandler;
 
+    //camera状态监听器
     private CameraStatusListener cameraStatusListener = null;
 
+    //调用相机的宿主Handler
     private Handler hostHandler ;
 
+    //打开相机
     @Override
     public void openCamera() {
         logInstance.i(TAG,"openCamera()");
 
         if (!isPreview) {
             isPreview = true;
-            //打开相机，再CameraDevice.StateCallback回调中监听相机打开状态
+            //打开相机，在CameraDevice.StateCallback回调中监听相机打开状态
             if (ActivityCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
                 //权限不允许
                 isPreview = false ;
@@ -101,6 +106,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
     String getCameraId(){
         if(cameraId == null){
             try {
+                //检索Camera，获取默认的相机方向
                 cameraId = CameraUtils.getDefaultCameraId(context);
             } catch (CameraAccessException e) {
                 e.printStackTrace();
@@ -119,44 +125,53 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
                 synchronized (cameraCaptureSession) {
                     if(cameraDevice != null) {//若CameraDevice已经关闭，
                         try {
+                            //尽快抛弃所有正在执行的捕获请求
                             cameraCaptureSession.abortCaptures();
                         } catch (Exception e) {
                             e.printStackTrace();
                             logInstance.e(TAG,"stopPreview() error",e);
                         }
+                        //关闭捕获会话
                         cameraCaptureSession.close();
                     }
                     cameraCaptureSession = null;
                 }
             }
-            if (cameraDevice != null) {//CameraDevice的创建以及销毁由Camera2holder完成，这里仅需要释放对CameraDevice的引用
+            if (cameraDevice != null) {
+                //CameraDevice的创建以及销毁由Camera2holder维护，这里仅需要释放对CameraDevice的引用
                 cameraDevice = null;
             }
             hostHandler = null;
+            //停止相机线层
             stopBackgroundThread();
         }
     }
 
+    //设置camera方向
     @Override
     public void setCameraId(String cameraId) {
         this.cameraId = cameraId ;
     }
 
+    //设置预览格式（预览数据）
     @Override
     public void setPreviewFormat(int previewFormat) {
         this.previewFormat = previewFormat ;
     }
 
+    //设置预览允许的最大尺寸
     @Override
     public void setPreviewMaxSize(Size previewMaxSize) {
         this.previewMaxSize = previewMaxSize ;
     }
 
+    //是否正在预览
     @Override
     public boolean isPreview(){
         return isPreview ;
     }
 
+    //获取camera运行线层所在handler
     Handler getHandle(){
         if(mBackgroundHandler == null){
             startBackgroundThread();
@@ -164,9 +179,11 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
         return mBackgroundHandler;
     }
 
+    //获取预览最适宜的尺寸
     @Override
     public Size getPreviewFitSize () {
         if(previewFitSize == null) {
+            //根据相机方向，预览格式，预览允许的最大尺寸大小，获取最适宜的预览大小
             previewFitSize = CameraUtils.getFitSize(context,getCameraId(),previewFormat, previewMaxSize);
         }
         return previewFitSize;
@@ -198,6 +215,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
                 e.printStackTrace();
                 //引发异常情况，客户端可以通过释放相机资源后重启
                 if(cameraStatusListener != null){
+                    //在调用相机的线层处理异常情况
                     executeToHostThread(new Runnable() {
                         @Override
                         public void run() {
@@ -243,10 +261,10 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
     }
 
 
-    //预设将会用到的所有获取显示图像数据的预览目标surface列表
+    //预设将会用到的所有获取显示图像数据的预览目标纹理表面
     public abstract List<Surface> getPresetSurfaceList();
 
-    //初始状态的surface列表
+    //初始状态的纹理表面
     public abstract List<Surface> getPreviewSurfaceList();
 
         /*----相机的回调处理----*/
@@ -370,6 +388,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
 
     protected final CameraCaptureSession.CaptureCallback captureCallback = new CameraCaptureSession.CaptureCallback() {
 
+        //相机开始捕获回调
         @Override
         public void onCaptureStarted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, long timestamp, long frameNumber) {
             if(cameraStatusListener != null){
@@ -384,6 +403,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
             super.onCaptureStarted(session, request, timestamp, frameNumber);
         }
 
+        //相机捕获完成回调（通过此回调，可以获得相机预览画面加载显示的时间）
         @Override
         public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
             if(cameraStatusListener != null){
@@ -398,6 +418,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
             super.onCaptureCompleted(session, request, result);
         }
 
+        //相机捕获失败回调
         @Override
         public void onCaptureFailed(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull CaptureFailure failure) {
             logInstance.e(TAG,String.format("onCaptureFailed :failure = %s",failure.getReason()));
@@ -425,6 +446,7 @@ public abstract class CameraTemplateImpl implements CameraTemplate {
 
     };
 
+    //设置相机状态监听器
     @Override
     public void setCameraStatusListener(CameraStatusListener cameraStatusListener) {
         this.cameraStatusListener = cameraStatusListener ;

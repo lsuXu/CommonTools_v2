@@ -13,10 +13,12 @@ import retrofit2.http.Url;
 
 public interface IDownload {
 
+    //下载
     @Streaming
     @GET
     Observable<ResponseBody> download(@Url String url);
 
+    //断点续传下载
     @Streaming
     @GET
     Observable<ResponseBody> download(@Header("Range") String range ,@Url() String url);
