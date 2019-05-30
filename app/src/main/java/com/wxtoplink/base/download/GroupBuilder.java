@@ -27,7 +27,40 @@ public class GroupBuilder {
         return instance ;
     }
 
-    public Group build(Group.GroupListener groupListener){
-        return new Group(groupId++, new ArrayList<DownloadTask>() , groupListener);
+    public Group<DownloadTask> buildTask(){
+        return buildTask("");
     }
+
+    public Group<DownloadTask> buildTask(String groupName){
+        return new Group<DownloadTask>(groupId++, new ArrayList<DownloadTask>(),groupName){
+
+        };
+    }
+
+    public Group<Group> buildGroup(){
+        return buildGroup("");
+    }
+
+    public Group<Group> buildGroup(String groupName){
+        return new Group<Group>(groupId ++ , new ArrayList<Group>() , groupName) {
+
+        };
+    }
+
+    interface ListType {
+        int success = 0 ;
+        int wait = 1;
+        int error = 2 ;
+    }
+
+    public interface GroupListener{
+
+        void onStart(int totalSize);
+
+        //队列剩余大小
+        void waitTaskSize(int size);
+
+        void onFinish();
+    }
+
 }

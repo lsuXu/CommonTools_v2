@@ -20,6 +20,8 @@ public class DownloadTask {
     private int status ;
     //下载文件的监听器
     private DownloadListener downloadListener ;
+    //标记对象
+    private Object tag ;
 
 
     public DownloadTask(String download_url, String file_name, String file_path, String md5, DownloadListener downloadListener) {
@@ -77,6 +79,14 @@ public class DownloadTask {
 
     public void setMd5(String md5) {
         this.md5 = md5;
+    }
+
+    public Object getTag() {
+        return tag;
+    }
+
+    public void setTag(Object tag) {
+        this.tag = tag;
     }
 
     @Override

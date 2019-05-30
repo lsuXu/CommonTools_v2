@@ -1,5 +1,7 @@
 package com.wxtoplink.base.download;
 
+import android.util.Log;
+
 import com.wxtoplink.base.download.listener.DownloadListener;
 import com.wxtoplink.base.log.AbstractLog;
 import com.wxtoplink.base.log.DownloadLog;
@@ -16,7 +18,7 @@ import java.util.concurrent.Executors;
  * Created by 12852 on 2018/7/24.
  */
 
-public final class DownloadManager implements LogOutput,Observer{
+public final class DownloadManager extends CollectionListener<DownloadTask> implements LogOutput {
 
     private final AbstractLog logInstance ;
 
@@ -123,8 +125,8 @@ public final class DownloadManager implements LogOutput,Observer{
     }
 
 
-    private void prepareDownload(DownloadTask downloadTask , Observer observer){
-        DownloadService downloadService = new DownloadService(downloadTask,observer);
+    private void prepareDownload(DownloadTask downloadTask , CollectionListener<DownloadTask> collectionListener){
+        DownloadService downloadService = new DownloadService(downloadTask, collectionListener);
         downloadExecutors.execute(downloadService);
     }
 
@@ -140,17 +142,41 @@ public final class DownloadManager implements LogOutput,Observer{
     }
 
     @Override
-    public void downloadFinish(final DownloadService downloadService) {
-        removeDownloadTask(downloadService.getDownloadTask());
+    public void downloadSuccess(DownloadTask downloadTask) {
+        removeDownloadTask(downloadTask);
+    }
+
+    @Override
+    public void downloadError(DownloadTask downloadTask) {
+        removeDownloadTask(downloadTask);
     }
 
     public void downloadGroup(Group group){
+        //通知任务组开始
         group.notifyStart();
-        for(DownloadTask downloadTask : group.getWaitTasks()){
-            if(downloadTask.getStatus() != Status.PREPARE.getId()){
-                downloadTask.setStatus(Status.PREPARE);//修改任务状态，避免重复添加到下载队列中
-                prepareDownload(downloadTask,group.getGroupObserver());
+        //任务组大小大于0，说明存在下载任务，进行下载。否则通知下载完成
+        if(!group.getWaitTasks().isEmpty()) {
+            if (group.getTClass().equals(Group.class)) {
+                //通过数组拷贝方式，避免在遍历到空的下载集合时，子集合通知父集合修改下载状态出现问题
+                List<Group> groups = new ArrayList<Group>() ;
+                groups.addAll(((Group<Group>) group).getWaitTasks());
+                //遍历通过拷贝的数组
+                for (Group groupChild :groups ) {
+                    downloadGroup(groupChild);
+                }
+            } else if (group.getTClass().equals(DownloadTask.class)) {
+                for (DownloadTask downloadTask : ((Group<DownloadTask>) group).getWaitTasks()) {
+                    downloadTask.setStatus(Status.PREPARE);//修改任务状态，避免重复添加到下载队列中
+                    prepareDownload(downloadTask, group);
+                }
+            } else {
+                Log.e(TAG, "unchecked group");
             }
+        }else{
+            //通知自身
+            group.notifyFinish();
+            //通知parent
+            group.notifyParent();
         }
     }
 

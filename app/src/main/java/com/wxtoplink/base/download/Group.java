@@ -1,7 +1,5 @@
 package com.wxtoplink.base.download;
 
-import com.wxtoplink.base.download.adapt.GroupListenerAdapt;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -9,82 +7,169 @@ import java.util.List;
  * Created by 12852 on 2019/4/25.
  */
 
-public class Group {
+public abstract class Group<T> extends CollectionListener<T> {
 
     private int groupId ;
 
-    private List<DownloadTask> waitTasks , finishTasks ;
+    private String groupName ;
 
-    private GroupListener groupListener ;
+    private Object tag ;
 
-    private Observer groupObserver ;
+    private List<T> waitTasks , successTasks , errorTasks ;
 
-    Group(int groupId, List<DownloadTask> waitTasks,GroupListener groupListener) {
-        this.groupId = groupId;
-        this.waitTasks = waitTasks;
-        this.groupListener = groupListener ;
-        this.finishTasks = new ArrayList<>();
-        this.groupObserver = new Observer() {
-            @Override
-            public void downloadFinish(DownloadService downloadService) {
-                Group.this.waitTasks.remove(downloadService.getDownloadTask());
-                Group.this.finishTasks.add(downloadService.getDownloadTask());
-                getGroupListener().waitSize(Group.this.waitTasks.size());
-                if (Group.this.waitTasks.size() <= 0 ) {
-                    getGroupListener().onFinish();
-                }
-            }
-        };
+    private CollectionListener<Group> parent ;
+
+    private GroupBuilder.GroupListener groupListener ;
+
+    public GroupBuilder.GroupListener getGroupListener() {
+        return groupListener;
     }
 
     public int getGroupId() {
         return groupId;
     }
 
-    public List<DownloadTask> getWaitTasks() {
+    public List<T> getWaitTasks() {
         return waitTasks;
     }
 
-    GroupListener getGroupListener() {
-        if(groupListener == null){
-            groupListener = new GroupListenerAdapt();
-        }
-        return groupListener;
+    public List<T> getSuccessTasks() {
+        return successTasks;
     }
+
+    public List<T> getErrorTasks() {
+        return errorTasks;
+    }
+
+    public String getGroupName() {
+        return groupName;
+    }
+
+    public Object getTag() {
+        return tag;
+    }
+
+    public void setTag(Object tag) {
+        this.tag = tag;
+    }
+
+    Group(int groupId, List<T> waitTasks , String groupName) {
+        this.groupId = groupId;
+        this.waitTasks = waitTasks;
+        this.successTasks = new ArrayList<T>();
+        this.errorTasks = new ArrayList<T>();
+        this.groupName = groupName ;
+    }
+
 
     void notifyStart(){
-        groupListener.onStart(waitTasks.size() + finishTasks.size());
+        if(groupListener != null) {
+            groupListener.onStart(countTotalTaskSize());
+        }
     }
 
-    public List<DownloadTask> getFinishTasks() {
-        return finishTasks;
+    void notifyFinish(){
+        if(groupListener != null){
+            groupListener.onFinish();
+        }
     }
+
+    void notifyParent(){
+        if(this.parent != null && this.getWaitTasks().size() <= 0){
+            if(this.getErrorTasks().size() == 0){
+                this.parent.downloadSuccess(this);
+            }else{
+                this.parent.downloadError(this);
+            }
+        }
+    }
+
 
     //添加下载任务到任务组
-    public boolean addTask(DownloadTask downloadTask){
-        if(downloadTask.getStatus() == Status.PREPARE.getId()){//准备下载中的任务，禁止重复添加
-            return false ;
+    public boolean add(T obj){
+        if(getTClass().equals(Group.class)){
+            ((Group)obj).parent = this;
         }
-        return waitTasks.add(downloadTask);
+        return waitTasks.add(obj);
     }
 
-    public void setGroupListener(GroupListener groupListener) {
+    public void setGroupListener(GroupBuilder.GroupListener groupListener) {
         this.groupListener = groupListener;
     }
 
-    public Observer getGroupObserver() {
-        return groupObserver;
+    public int countTotalTaskSize(){
+        return waitTaskSize() + errorTaskSize() + successTaskSize() ;
     }
 
-    public interface GroupListener{
-
-        void onStart(int totalSize);
-
-        //队列剩余大小
-        void waitSize(int size);
-
-        void onFinish();
+    public int waitTaskSize(){
+        return countTaskSize(GroupBuilder.ListType.wait);
     }
 
+    public int errorTaskSize(){
+        return countTaskSize(GroupBuilder.ListType.error) ;
+    }
 
+    public int successTaskSize(){
+        return countTaskSize(GroupBuilder.ListType.success) ;
+    }
+
+    //计算大小
+    private int countTaskSize(int type){
+        List<T> list = getList(type);
+        int count = 0 ;
+        if(list == null || list.isEmpty()){
+            return 0 ;
+        }else if(getTClass().equals(DownloadTask.class)){//列表中的子项为DownloadTask
+            //返回列表大小
+            return list.size();
+        }else if(getTClass().equals(Group.class)){
+            for(Group childGroup : (List<Group>)list){
+                count += childGroup.countTaskSize(type);
+            }
+        }
+        return count ;
+    }
+
+    /**
+     * 根据类型获取对应的列表
+     * @param type 列表类型(GroupBuilder.ListType)
+     * @return 对应资源列表
+     */
+    private List<T> getList(int type){
+        if(type == GroupBuilder.ListType.success){
+            return successTasks;
+        }else if(type == GroupBuilder.ListType.wait){
+            return waitTasks;
+        }else if(type == GroupBuilder.ListType.error){
+            return errorTasks ;
+        }else{
+            return new ArrayList<>();
+        }
+    }
+
+    @Override
+    void downloadSuccess(T obj) {
+        this.getWaitTasks().remove(obj);
+        this.getSuccessTasks().add(obj);
+        if(this.groupListener != null) {
+            this.groupListener.waitTaskSize(this.waitTaskSize());
+            if (this.getWaitTasks().size() <= 0 ) {
+                this.groupListener.onFinish();
+            }
+        }
+        notifyParent();
+    }
+
+    @Override
+    void downloadError(T obj) {
+        this.getWaitTasks().remove(obj);
+        this.getErrorTasks().add(obj);
+        if(this.groupListener != null) {
+            this.groupListener.waitTaskSize(this.waitTaskSize());
+            if (this.getWaitTasks().size() <= 0) {
+                this.groupListener.onFinish();
+            }
+        }
+        notifyParent();
+    }
 }

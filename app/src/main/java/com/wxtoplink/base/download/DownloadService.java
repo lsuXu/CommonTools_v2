@@ -28,7 +28,7 @@ public final class DownloadService implements Runnable{
 
     private final DownloadListener downloadListener ;
 
-    private final Observer observer ;
+    private final CollectionListener<DownloadTask> collectionListener;
 
     private boolean uniqueIdentifierSupport ;//存在唯一ID支持
 
@@ -38,10 +38,10 @@ public final class DownloadService implements Runnable{
 
     private Observable<ResponseBody> responseBodyObservable ;
 
-    public DownloadService(DownloadTask downloadTask, Observer observer) {
+    public DownloadService(DownloadTask downloadTask, CollectionListener<DownloadTask> collectionListener) {
         this.downloadTask = downloadTask;
         this.downloadListener = downloadTask.getDownloadListener() == null? new DownloadListenerAdapt():downloadTask.getDownloadListener();
-        this.observer = observer;
+        this.collectionListener = collectionListener;
     }
 
     public DownloadListener getDownloadListener() {
@@ -78,7 +78,6 @@ public final class DownloadService implements Runnable{
                 if(DownloadUtil.checkMd5(breakFilePath,downloadTask.getMd5())){//MD5匹配成功，重命名，触发完成回调
                     file.renameTo(new File(downloadTask.getFile_path()));
                     setDownloadStatus(Status.DOWNLOAD_SUCCESS);
-                    observer.downloadFinish(this);
                     return;
                 }else{
                     file.delete();
@@ -124,8 +123,6 @@ public final class DownloadService implements Runnable{
                         } else {
                             setDownloadStatus(Status.DOWNLOAD_ERROR, new Throwable("Download fail"));//下载失败
                         }
-                        //移除下载任务
-                        observer.downloadFinish(DownloadService.this);
 
                     }
                 }, new Consumer<Throwable>() {
@@ -139,7 +136,6 @@ public final class DownloadService implements Runnable{
                             //下载出错
                             setDownloadStatus(Status.DOWNLOAD_ERROR, throwable);//下载失败
                         }
-                        observer.downloadFinish(DownloadService.this);
                     }
                 });
     }
@@ -224,10 +220,12 @@ public final class DownloadService implements Runnable{
             case DOWNLOAD_SUCCESS:
                 downloadTask.setStatus(Status.DOWNLOAD_SUCCESS);
                 downloadListener.onFinishDownload();
+                collectionListener.downloadSuccess(downloadTask);
                 break;
             case DOWNLOAD_ERROR:
                 downloadTask.setStatus(Status.DOWNLOAD_ERROR);
                 downloadListener.onError(throwable);
+                collectionListener.downloadError(downloadTask);
                 break;
                 default:break;
         }
