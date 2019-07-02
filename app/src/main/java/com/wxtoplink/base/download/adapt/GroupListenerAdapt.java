@@ -1,13 +1,13 @@
 package com.wxtoplink.base.download.adapt;
 
-import com.wxtoplink.base.download.Group;
+import com.wxtoplink.base.download.GroupBuilder;
 
 /**
  * 下载任务组监听适配器
  * Created by 12852 on 2019/4/25.
  */
 
-public class GroupListenerAdapt implements Group.GroupListener{
+public class GroupListenerAdapt implements GroupBuilder.GroupListener {
 
     @Override
     public void onStart(int totalSize) {
@@ -15,7 +15,7 @@ public class GroupListenerAdapt implements Group.GroupListener{
     }
 
     @Override
-    public void waitSize(int size) {
+    public void waitTaskSize(int size) {
 
     }
 

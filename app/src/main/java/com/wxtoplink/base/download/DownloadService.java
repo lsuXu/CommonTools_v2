@@ -24,11 +24,11 @@ import retrofit2.adapter.rxjava2.HttpException;
 
 public final class DownloadService implements Runnable{
 
-    private final DownloadTask downloadTask ;//下载任务
+    private final DownloadTask downloadTask ;
 
-    private final DownloadListener downloadListener ;//下载监听器
+    private final DownloadListener downloadListener ;
 
-    private final Observer observer ;//父监听器，用于通知调用者下载状态
+    private final CollectionListener<DownloadTask> collectionListener;
 
     private boolean uniqueIdentifierSupport ;//存在唯一ID支持
 
@@ -38,10 +38,10 @@ public final class DownloadService implements Runnable{
 
     private Observable<ResponseBody> responseBodyObservable ;
 
-    public DownloadService(DownloadTask downloadTask, Observer observer) {
+    public DownloadService(DownloadTask downloadTask, CollectionListener<DownloadTask> collectionListener) {
         this.downloadTask = downloadTask;
         this.downloadListener = downloadTask.getDownloadListener() == null? new DownloadListenerAdapt():downloadTask.getDownloadListener();
-        this.observer = observer;
+        this.collectionListener = collectionListener;
     }
 
     //获取下载监听器
@@ -63,7 +63,7 @@ public final class DownloadService implements Runnable{
 
         startRange = DownloadUtil.getRangeStart(downloadTask);//开始范围
 
-        uniqueIdentifierSupport = DownloadUtil.breakSupport(downloadTask);//判断是否支持断点续传
+        uniqueIdentifierSupport = DownloadUtil.breakSupport(downloadTask);
 
         if(uniqueIdentifierSupport){//唯一标志支持
             //生成断点续传文件名
@@ -83,8 +83,6 @@ public final class DownloadService implements Runnable{
                     file.renameTo(new File(downloadTask.getFile_path()));
                     //设置下载状态
                     setDownloadStatus(Status.DOWNLOAD_SUCCESS);
-                    //通知下载完成
-                    observer.downloadFinish(this);
                     return;
                 }else{
                     file.delete();
@@ -131,8 +129,6 @@ public final class DownloadService implements Runnable{
                         } else {
                             setDownloadStatus(Status.DOWNLOAD_ERROR, new Throwable("Download fail"));//下载失败
                         }
-                        //移除下载任务
-                        observer.downloadFinish(DownloadService.this);
 
                     }
                 }, new Consumer<Throwable>() {
@@ -146,7 +142,6 @@ public final class DownloadService implements Runnable{
                             //下载出错
                             setDownloadStatus(Status.DOWNLOAD_ERROR, throwable);//下载失败
                         }
-                        observer.downloadFinish(DownloadService.this);
                     }
                 });
     }
@@ -190,7 +185,7 @@ public final class DownloadService implements Runnable{
         if((throwable instanceof HttpException && ((HttpException) throwable).code() == 416)
                 ||(throwable instanceof retrofit2.HttpException && ((retrofit2.HttpException) throwable).code() == 416)){
             //判断此时md5是否匹配
-            if(DownloadUtil.checkMd5(breakFilePath,downloadTask.getMd5())){//匹配成功，下载完成
+            if(DownloadUtil.checkMd5(breakFilePath,downloadTask.getMd5())){
                 File file = new File(breakFilePath);
                 //重命名
                 return file.renameTo(new File(downloadTask.getFile_path()));
@@ -238,10 +233,12 @@ public final class DownloadService implements Runnable{
             case DOWNLOAD_SUCCESS:
                 downloadTask.setStatus(Status.DOWNLOAD_SUCCESS);
                 downloadListener.onFinishDownload();
+                collectionListener.downloadSuccess(downloadTask);
                 break;
             case DOWNLOAD_ERROR:
                 downloadTask.setStatus(Status.DOWNLOAD_ERROR);
                 downloadListener.onError(throwable);
+                collectionListener.downloadError(downloadTask);
                 break;
                 default:break;
         }
