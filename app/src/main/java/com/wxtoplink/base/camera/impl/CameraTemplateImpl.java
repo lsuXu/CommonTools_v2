@@ -21,8 +21,8 @@ import com.wxtoplink.base.camera.Camera2Holder;
 import com.wxtoplink.base.camera.interfaces.CameraStatusListener;
 import com.wxtoplink.base.camera.interfaces.CameraTemplate;
 import com.wxtoplink.base.camera.utils.CameraUtils;
-import com.wxtoplink.base.log.AbstractLog;
-import com.wxtoplink.base.log.CameraLog;
+import com.wxtoplink.base.log.LogInstance;
+import com.wxtoplink.base.log.LogBuilder;
 
 import java.util.List;
 
@@ -35,11 +35,11 @@ import java.util.List;
 public abstract class CameraTemplateImpl implements CameraTemplate {
 
     private final String TAG ;
-    private AbstractLog logInstance ;//日志输出
+    private LogInstance logInstance ;//日志输出
 
     CameraTemplateImpl(Context context) {
         TAG = CameraTemplateImpl.this.getClass().toString() ;
-        logInstance = CameraLog.getInstance();
+        logInstance = LogBuilder.getInstance().build(LogBuilder.LogType.CAMERA);
         this.context = context;
     }
 

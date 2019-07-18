@@ -2,7 +2,8 @@ package com.wxtoplink.base.linux;
 
 import android.os.Environment;
 
-import com.wxtoplink.base.log.LinuxLog;
+import com.wxtoplink.base.log.LogInstance;
+import com.wxtoplink.base.log.LogBuilder;
 import com.wxtoplink.base.log.LogOperate;
 import com.wxtoplink.base.log.LogOutput;
 
@@ -24,6 +25,8 @@ public final class ShellManager implements LogOutput{
 
     private static final String TAG = ShellManager.class.getSimpleName();
 
+    private final LogInstance linuxLogInstance ;
+
     //进程构造器
     private ProcessBuilder processBuilder ;
     //设置进程工作的初始目录
@@ -37,6 +40,9 @@ public final class ShellManager implements LogOutput{
 
     //初始化
     private ShellManager(){
+
+        linuxLogInstance = LogBuilder.getInstance().build(LogBuilder.LogType.LINUX);
+
         processBuilder = new ProcessBuilder("sh");
         //设置Shell进程初始路径
         processBuilder.directory(new File(rootFilePath));
@@ -72,7 +78,7 @@ public final class ShellManager implements LogOutput{
                                 timeDisposable.dispose();
                                 timeDisposable = null ;
                             }else if(existTime >= 5){
-                                LinuxLog.getInstance().i(TAG,"shellProcess release");
+                                linuxLogInstance.i(TAG,"shellProcess release");
                                 //超过十分钟未被调用，正常退出进程
                                 shellProcess.release();
                             }
@@ -81,7 +87,7 @@ public final class ShellManager implements LogOutput{
         }
 
         if(shellProcess == null || shellProcess.isClose()){
-            LinuxLog.getInstance().i(TAG,"创建linux进程");
+            linuxLogInstance.i(TAG,"创建linux进程");
             //创建一个新的Linux窗口进程
             shellProcess = new ShellProcess(processBuilder.start());
         }
@@ -91,7 +97,7 @@ public final class ShellManager implements LogOutput{
 
     @Override
     public void setLogOutput(LogOperate operate, boolean printf) {
-        LinuxLog.getInstance().setLogOperate(operate);
-        LinuxLog.getInstance().setPrintf(printf);
+        linuxLogInstance.setLogOperate(operate);
+        linuxLogInstance.setPrintf(printf);
     }
 }

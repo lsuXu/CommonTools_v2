@@ -3,8 +3,8 @@ package com.wxtoplink.base.download;
 import android.util.Log;
 
 import com.wxtoplink.base.download.listener.DownloadListener;
-import com.wxtoplink.base.log.AbstractLog;
-import com.wxtoplink.base.log.DownloadLog;
+import com.wxtoplink.base.log.LogInstance;
+import com.wxtoplink.base.log.LogBuilder;
 import com.wxtoplink.base.log.LogOperate;
 import com.wxtoplink.base.log.LogOutput;
 
@@ -20,7 +20,7 @@ import java.util.concurrent.Executors;
 
 public final class DownloadManager extends CollectionListener<DownloadTask> implements LogOutput {
 
-    private final AbstractLog logInstance ;
+    private final LogInstance logInstance ;
 
     private final String TAG ;
 
@@ -46,7 +46,7 @@ public final class DownloadManager extends CollectionListener<DownloadTask> impl
         downloadQueue = new ArrayList<>();
         downloadExecutors = Executors.newFixedThreadPool(DEFAULT_SIZE);
         waitExecutor = Executors.newSingleThreadExecutor();
-        logInstance = DownloadLog.getInstance();
+        logInstance = LogBuilder.getInstance().build(LogBuilder.LogType.DOWNLOAD);
     }
 
     //添加下载任务
@@ -137,8 +137,8 @@ public final class DownloadManager extends CollectionListener<DownloadTask> impl
 
     @Override
     public void setLogOutput(LogOperate operate, boolean printf) {
-        DownloadLog.getInstance().setLogOperate(operate);
-        DownloadLog.getInstance().setPrintf(printf);
+        logInstance.setLogOperate(operate);
+        logInstance.setPrintf(printf);
     }
 
     @Override

@@ -1,7 +1,7 @@
 package com.wxtoplink.base.download.utils;
 
 import com.wxtoplink.base.download.DownloadTask;
-import com.wxtoplink.base.log.DownloadLog;
+import com.wxtoplink.base.log.LogBuilder;
 import com.wxtoplink.base.tools.EncryptionCheckUtil;
 
 import java.io.File;
@@ -90,7 +90,7 @@ public class DownloadUtil {
             }
             downloadSuccess = true ;
         } catch (Exception e) {
-            DownloadLog.getInstance().e("DownloadUtil","download error",e);
+            LogBuilder.getInstance().build(LogBuilder.LogType.DOWNLOAD).e("DownloadUtil","download error",e);
             e.printStackTrace();
         } finally {
             try {

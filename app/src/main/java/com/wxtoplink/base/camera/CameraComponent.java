@@ -11,7 +11,8 @@ import com.wxtoplink.base.camera.impl.CameraTakePhotoImpl;
 import com.wxtoplink.base.camera.impl.ViewPreviewCamera;
 import com.wxtoplink.base.camera.interfaces.CameraTemplate;
 import com.wxtoplink.base.camera.utils.CameraUtils;
-import com.wxtoplink.base.log.CameraLog;
+import com.wxtoplink.base.log.LogInstance;
+import com.wxtoplink.base.log.LogBuilder;
 import com.wxtoplink.base.log.LogOperate;
 import com.wxtoplink.base.log.LogOutput;
 
@@ -31,8 +32,11 @@ public class CameraComponent implements LogOutput{
 
     private Map<String,CameraTemplate> cameraTemplateMap ;
 
+    private final LogInstance cameraLogInstance ;
+
     private CameraComponent(){
         cameraTemplateMap = new HashMap<>();
+        cameraLogInstance = LogBuilder.getInstance().build(LogBuilder.LogType.CAMERA);
     }
 
     private CameraType currentCameraType ;
@@ -43,7 +47,7 @@ public class CameraComponent implements LogOutput{
 
     //设置相机用途，使用相机组件，需要第一个被调用来初始化相机
     public synchronized CameraTemplate getCamera(CameraType cameraType, Context context){
-        CameraLog.getInstance().i(TAG,String.format("call getCamera('%s')",cameraType.getTypeName()));
+        cameraLogInstance.i(TAG,String.format("call getCamera('%s')",cameraType.getTypeName()));
         try {
             if(enableCamera(context)) {
                 stopAllPreview();//停止所有预览
@@ -69,7 +73,7 @@ public class CameraComponent implements LogOutput{
             }
         } catch (Exception e) {
             e.printStackTrace();
-            CameraLog.getInstance().e(TAG,"getCamera() error",e);
+            cameraLogInstance.e(TAG,"getCamera() error",e);
         }
 
         return null ;
@@ -120,8 +124,8 @@ public class CameraComponent implements LogOutput{
     //设置日志输出
     @Override
     public void setLogOutput(LogOperate operate, boolean printf) {
-        CameraLog.getInstance().setPrintf(printf);
-        CameraLog.getInstance().setLogOperate(operate);
+        cameraLogInstance.setPrintf(printf);
+        cameraLogInstance.setLogOperate(operate);
     }
 
 

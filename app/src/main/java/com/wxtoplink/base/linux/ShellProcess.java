@@ -1,7 +1,7 @@
 package com.wxtoplink.base.linux;
 
-import com.wxtoplink.base.log.AbstractLog;
-import com.wxtoplink.base.log.LinuxLog;
+import com.wxtoplink.base.log.LogInstance;
+import com.wxtoplink.base.log.LogBuilder;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -18,11 +18,12 @@ public class ShellProcess {
 
     private static final String TAG = ShellProcess.class.getSimpleName();
 
-    private AbstractLog logInstance ;//日志输出
+    private final LogInstance logInstance ;//日志输出
 
-    public ShellProcess(Process process) {
+    //构造方法，缺省，只允许ShellManager进行创建
+    ShellProcess(Process process) {
         this.process = process;
-        logInstance = LinuxLog.getInstance();
+        logInstance = LogBuilder.getInstance().build(LogBuilder.LogType.LINUX);
         initEnvironment();//初始化运行环境
     }
 

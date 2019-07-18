@@ -3,15 +3,17 @@ package com.wxtoplink.base.log;
 import android.util.Log;
 
 /**
- * 日志上输出抽象类
+ * 日志输出抽象类
  * Created by 12852 on 2019/2/28.
  */
 
-public abstract class AbstractLog {
+public class LogInstance {
 
     private LogOperate logOperate ;
 
     private boolean printf = true;
+
+    LogInstance(){};
 
     public void setLogOperate(LogOperate logOperate) {
         this.logOperate = logOperate;
@@ -87,6 +89,13 @@ public abstract class AbstractLog {
         if(logOperate != null){
             logOperate.operate(level.toString(),tar,msg,tr);
         }
+    }
+
+    public enum Level {
+        E,
+        V,
+        I,
+        D
     }
 
 }

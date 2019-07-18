@@ -10,8 +10,8 @@ import android.os.HandlerThread;
 import android.support.annotation.NonNull;
 import android.support.annotation.RequiresPermission;
 
-import com.wxtoplink.base.log.AbstractLog;
-import com.wxtoplink.base.log.CameraLog;
+import com.wxtoplink.base.log.LogInstance;
+import com.wxtoplink.base.log.LogBuilder;
 
 
 /**
@@ -33,10 +33,10 @@ public final class Camera2Holder {
 
     private Handler cameraHandler ;
 
-    private AbstractLog logInstance ;//日志输出
+    private LogInstance logInstance ;//日志输出
 
     private Camera2Holder() {
-        logInstance = CameraLog.getInstance();
+        logInstance = LogBuilder.getInstance().build(LogBuilder.LogType.CAMERA);
     }
 
     public static Camera2Holder getInstance() {

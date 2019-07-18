@@ -25,7 +25,7 @@ import java.util.List;
 
 
 /**
- * 仅提供拍照功能
+ * 相机模板对于拍照功能的实现，提供画面预览以及拍照功能
  * Created by 12852 on 2018/8/29.
  */
 
@@ -42,19 +42,27 @@ public class CameraTakePhotoImpl extends CameraTemplateImpl implements CameraTak
         photoFormat = ImageFormat.JPEG ;//无界面预览模式，默认使用JPEG格式进行拍照，还支持YUV_420_888数据格式
     }
 
-    //预览输出表面
+    /**
+     * 相机初次打开时的默认预览输出表面
+     * @return  初次打开默认的预览输出表面，必须为{@link CameraTakePhotoImpl#getPresetSurfaceList()}输出的子集
+     */
     @Override
     public List<Surface> getPreviewSurfaceList() {
         return Arrays.asList(new Surface(textureView.getSurfaceTexture()));
     }
 
-    //预设所有的输出表面
+    /**
+     * 预设所有的输出表面，只有预设的表面，才可以动态的添加到真正的输出表面
+     * @return  预设的所有输出表面列表
+     */
     @Override
     public List<Surface> getPresetSurfaceList() {
         return Arrays.asList(new Surface(textureView.getSurfaceTexture()),photoImageReader.getSurface());
     }
 
-    //开始预览
+    /**
+     * 开始预览，获取当前的looper,用于回调状态执行，等待预览的纹理表面可用后，打开相机，进行配置
+     */
     @RequiresPermission(android.Manifest.permission.CAMERA)
     @Override
     public synchronized void startPreview() {
@@ -65,7 +73,7 @@ public class CameraTakePhotoImpl extends CameraTemplateImpl implements CameraTak
         if(textureView == null){
             throw new NullPointerException("The target canvas is null ,You should call setSurfaceView() before calling startPreview()");
         }else{
-            if(textureView.isAvailable()){//预览界面存在，且当前状态可获取
+            if(textureView.isAvailable()){//预览界面存在，且当前状态可用于呈现
                 //打开相机
                 openCamera();
             }else{

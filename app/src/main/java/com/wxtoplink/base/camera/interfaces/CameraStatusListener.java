@@ -1,6 +1,7 @@
 package com.wxtoplink.base.camera.interfaces;
 
 /**
+ * 相机状态监听器
  * Created by 12852 on 2019/1/8.
  */
 

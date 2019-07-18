@@ -3,6 +3,8 @@ package com.wxtoplink.base.camera.adapt;
 import com.wxtoplink.base.camera.interfaces.CameraStatusListener;
 
 /**
+ * CameraStatusListener的适配器，方法作用
+ * @see com.wxtoplink.base.camera.interfaces.CameraStatusListener
  * Created by 12852 on 2019/1/8.
  */
 

@@ -12,7 +12,7 @@ public interface CameraTemplate {
     //开始预览
     void startPreview();
 
-    //打开下爱你
+    //打开相机
     void openCamera();
 
     //停止预览
