@@ -1,4 +1,4 @@
-package com.wxtoplink.base.camera.impl;
+package com.xuxianpu.tools.camera.impl;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -15,12 +15,12 @@ import android.util.Size;
 import android.view.Surface;
 import android.view.TextureView;
 
-import com.wxtoplink.base.camera.interfaces.CameraPreviewData;
-import com.wxtoplink.base.camera.interfaces.CameraTakePhoto;
-import com.wxtoplink.base.camera.interfaces.CapturePhotoCallBack;
-import com.wxtoplink.base.camera.interfaces.PreviewDataCallBack;
-import com.wxtoplink.base.camera.utils.CameraUtils;
-import com.wxtoplink.base.tools.ByteDataFormat;
+import com.xuxianpu.tools.camera.interfaces.CameraPreviewData;
+import com.xuxianpu.tools.camera.interfaces.CameraTakePhoto;
+import com.xuxianpu.tools.camera.interfaces.CapturePhotoCallBack;
+import com.xuxianpu.tools.camera.interfaces.PreviewDataCallBack;
+import com.xuxianpu.tools.camera.utils.ByteDataFormat;
+import com.xuxianpu.tools.camera.utils.CameraUtils;
 
 import java.util.Arrays;
 import java.util.List;
@@ -31,7 +31,7 @@ import java.util.List;
  * Created by 12852 on 2018/8/29.
  */
 
-public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakePhoto,CameraPreviewData{
+public class ViewPreviewCamera extends CameraTemplateImpl implements CameraTakePhoto, CameraPreviewData {
 
     private ImageReader previewImageReader ;//预览数据获取源
     private ImageReader photoImageReader ;//拍照数据获取源

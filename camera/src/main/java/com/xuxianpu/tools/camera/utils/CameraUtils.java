@@ -1,4 +1,4 @@
-package com.wxtoplink.base.camera.utils;
+package com.xuxianpu.tools.camera.utils;
 
 import android.app.Activity;
 import android.content.Context;
@@ -10,11 +10,10 @@ import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.Surface;
-
-import com.wxtoplink.base.log.LogBuilder;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -95,7 +94,7 @@ public class CameraUtils {
         }
 
         for(Size size : sizeList ){
-            LogBuilder.getInstance().build(LogBuilder.LogType.CAMERA).i(TAG,"size :{ height =" + size.getHeight() + " ,width =" + size.getWidth() + " };");
+            Log.i(TAG,"size :{ height =" + size.getHeight() + " ,width =" + size.getWidth() + " };");
             if(size.getWidth()*size.getHeight()<=maxSize.getHeight()*maxSize.getWidth()){
                 return size ;
             }
@@ -107,7 +106,6 @@ public class CameraUtils {
     //获取相机预览界面的翻转角度，用于纠正相机预览的方向
     public static int getOrientation(@NonNull Context context,@NonNull String cameraId){
         if(!(context instanceof Activity)){
-            LogBuilder.getInstance().build(LogBuilder.LogType.CAMERA).i(TAG,"getOrientation() methods returns 0");
             return 0;
         };
         try {
@@ -126,7 +124,6 @@ public class CameraUtils {
             //获取摄像机传感器的定位
             int mSensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
             int orientation = (ORIENTATIONS.get(rotation) +mSensorOrientation + 270 )%360;
-            LogBuilder.getInstance().build(LogBuilder.LogType.CAMERA).i(TAG,"getOrientation() methods returns " + orientation);
             return orientation ;
         } catch (CameraAccessException e) {
             e.printStackTrace();

@@ -1,10 +1,10 @@
-package com.wxtoplink.base.camera.adapt;
+package com.xuxianpu.tools.camera.adapt;
 
-import com.wxtoplink.base.camera.interfaces.CameraStatusListener;
+import com.xuxianpu.tools.camera.interfaces.CameraStatusListener;
 
 /**
  * CameraStatusListener的适配器，方法作用
- * @see com.wxtoplink.base.camera.interfaces.CameraStatusListener
+ * @see CameraStatusListener
  * Created by 12852 on 2019/1/8.
  */
 

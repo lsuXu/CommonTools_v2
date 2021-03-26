@@ -1,4 +1,4 @@
-package com.wxtoplink.base.camera.interfaces;
+package com.xuxianpu.tools.camera.interfaces;
 
 import android.util.Size;
 

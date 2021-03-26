@@ -1,16 +1,15 @@
-package com.wxtoplink.base.camera.impl;
+package com.xuxianpu.tools.camera.impl;
 
 import android.content.Context;
 import android.graphics.ImageFormat;
-
 import android.media.Image;
 import android.media.ImageReader;
 import android.support.annotation.RequiresPermission;
 import android.util.Size;
 import android.view.Surface;
 
-import com.wxtoplink.base.camera.interfaces.CameraPreviewData;
-import com.wxtoplink.base.camera.interfaces.PreviewDataCallBack;
+import com.xuxianpu.tools.camera.interfaces.CameraPreviewData;
+import com.xuxianpu.tools.camera.interfaces.PreviewDataCallBack;
 
 import java.util.Arrays;
 import java.util.List;

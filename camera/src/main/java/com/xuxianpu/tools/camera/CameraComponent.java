@@ -1,4 +1,4 @@
-package com.wxtoplink.base.camera;
+package com.xuxianpu.tools.camera;
 
 import android.Manifest;
 import android.content.Context;
@@ -6,15 +6,11 @@ import android.content.pm.PackageManager;
 import android.hardware.camera2.CameraAccessException;
 import android.os.Build;
 
-import com.wxtoplink.base.camera.impl.NoViewPreviewCamera;
-import com.wxtoplink.base.camera.impl.CameraTakePhotoImpl;
-import com.wxtoplink.base.camera.impl.ViewPreviewCamera;
-import com.wxtoplink.base.camera.interfaces.CameraTemplate;
-import com.wxtoplink.base.camera.utils.CameraUtils;
-import com.wxtoplink.base.log.LogInstance;
-import com.wxtoplink.base.log.LogBuilder;
-import com.wxtoplink.base.log.LogOperate;
-import com.wxtoplink.base.log.LogOutput;
+import com.xuxianpu.tools.camera.impl.CameraTakePhotoImpl;
+import com.xuxianpu.tools.camera.impl.NoViewPreviewCamera;
+import com.xuxianpu.tools.camera.impl.ViewPreviewCamera;
+import com.xuxianpu.tools.camera.interfaces.CameraTemplate;
+import com.xuxianpu.tools.camera.utils.CameraUtils;
 
 import java.lang.reflect.Constructor;
 import java.util.HashMap;
@@ -26,17 +22,15 @@ import java.util.Map;
  * Created by 12852 on 2018/8/29.
  */
 
-public class CameraComponent implements LogOutput{
+public class CameraComponent{
 
     private static final String TAG = CameraComponent.class.getSimpleName();
 
-    private Map<String,CameraTemplate> cameraTemplateMap ;
+    private Map<String, CameraTemplate> cameraTemplateMap ;
 
-    private final LogInstance cameraLogInstance ;
 
     private CameraComponent(){
         cameraTemplateMap = new HashMap<>();
-        cameraLogInstance = LogBuilder.getInstance().build(LogBuilder.LogType.CAMERA);
     }
 
     private CameraType currentCameraType ;
@@ -47,7 +41,6 @@ public class CameraComponent implements LogOutput{
 
     //设置相机用途，使用相机组件，需要第一个被调用来初始化相机
     public synchronized CameraTemplate getCamera(CameraType cameraType, Context context){
-        cameraLogInstance.i(TAG,String.format("call getCamera('%s')",cameraType.getTypeName()));
         try {
             if(enableCamera(context)) {
                 stopAllPreview();//停止所有预览
@@ -73,7 +66,6 @@ public class CameraComponent implements LogOutput{
             }
         } catch (Exception e) {
             e.printStackTrace();
-            cameraLogInstance.e(TAG,"getCamera() error",e);
         }
 
         return null ;
@@ -120,14 +112,6 @@ public class CameraComponent implements LogOutput{
         }
         return isPreview ;
     }
-
-    //设置日志输出
-    @Override
-    public void setLogOutput(LogOperate operate, boolean printf) {
-        cameraLogInstance.setPrintf(printf);
-        cameraLogInstance.setLogOperate(operate);
-    }
-
 
     private static final class CameraHolder{
         private static final CameraComponent instance = new CameraComponent();

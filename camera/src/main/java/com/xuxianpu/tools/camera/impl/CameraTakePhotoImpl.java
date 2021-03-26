@@ -1,4 +1,4 @@
-package com.wxtoplink.base.camera.impl;
+package com.xuxianpu.tools.camera.impl;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -15,10 +15,10 @@ import android.util.Size;
 import android.view.Surface;
 import android.view.TextureView;
 
-import com.wxtoplink.base.camera.interfaces.CameraTakePhoto;
-import com.wxtoplink.base.camera.interfaces.CapturePhotoCallBack;
-import com.wxtoplink.base.camera.utils.CameraUtils;
-import com.wxtoplink.base.tools.ByteDataFormat;
+import com.xuxianpu.tools.camera.interfaces.CameraTakePhoto;
+import com.xuxianpu.tools.camera.interfaces.CapturePhotoCallBack;
+import com.xuxianpu.tools.camera.utils.ByteDataFormat;
+import com.xuxianpu.tools.camera.utils.CameraUtils;
 
 import java.util.Arrays;
 import java.util.List;
